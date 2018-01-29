@@ -6,7 +6,7 @@
         <mt-field label="用户名" placeholder="请输入用户名" v-model="username"></mt-field>
         <mt-field label="密码" placeholder="请输入密码" type="password" v-model="password"></mt-field>
         <div class="oprate-area">
-          <mt-button type="primary" size="large">登陆</mt-button>
+          <mt-button type="primary" size="large" @click="login">登陆</mt-button>
           <div class="register">
             没有账号? <router-link  to="/register">立即注册</router-link>
           </div>
@@ -21,12 +21,27 @@
 </template>
 
 <script>
-
+import axios from "axios"
 export default {
   data () {
     return {
       username: '',
       password: ''
+    }
+  },
+  methods:{
+    login(){
+        axios.post('/api/user/login', {
+            username: this.username,
+            password: this.password
+        })
+        .then(function (response) {
+            let res = response.data;
+                alert(res.msg)
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
     }
   }
 }

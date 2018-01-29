@@ -9,15 +9,31 @@ import (
 	"net/http"
 	"github.com/gorilla/websocket"
 
-	"strconv"
 	//"github.com/garyburd/redigo/redis"
 	//"./utils"
 )
-var clients = make(map[string]*websocket.Conn) // connected clients
+var (
+	//websockt对象
+	upgrader = websocket.Upgrader{}
+	// 保存所有客户端连接,key是用户名	
+	clients = make(map[string]*websocket.Conn) 
+	// 用户上线/下线的消息通道
+	onlineChan = make(chan Message)
+	// 用户添加好友请求的消息通道
+	addFriendChan  = make(chan Message)
+	// 用户删除好友请求的消息通道
+	delFriendChan  = make(chan Message)
+	// 用户聊天消息通道
+	chatChan = make(chan Message)
+)
+const (
+
+)
+
+
 var chans = make(chan Message)           // broadcast channel
 //var test=make(map[int]string)
-var count int
-var upgrader = websocket.Upgrader{}
+
 type Message struct {
 	Src    string `json:"src"`
 	Dst string `json:"dst"`
@@ -41,16 +57,14 @@ func main() {
 		
 		//用户注册
 		u.POST("/register", user.Register)
+		u.POST("/login",user.Login)
 		u.GET("/yy/:name",func(c *gin.Context){
-			count++
-			//test[count] =c.Query("name")
-			fmt.Println(count)
-
+	
 			username, _ := c.Cookie("username")
 			c.JSON(200, gin.H{
 				"success" : true,
 				"msg": "ok",
-				"data": "hahaha"+strconv.Itoa(count)+username,
+				"data": "hahaha"+username,
 			})
 			return
 		})
