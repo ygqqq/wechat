@@ -28,6 +28,7 @@
 </template>
 
 <script>
+import config from "../../config/local.config"
 import axios from "axios"
 export default {
   data(){
@@ -43,6 +44,7 @@ export default {
   },
   methods:{
       submit(){
+          
           axios.post('/api/user/register', {
                 username: this.username,
                 password: this.password,
@@ -60,7 +62,7 @@ export default {
             });
       },
       init(){
-        this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a='+this.username);
+        this.ws = new WebSocket(config.wsUrl+'?a='+this.username);
         this.ws.addEventListener('message', function(e) {
             var msg = JSON.parse(e.data);
             console.log(msg)
