@@ -1,0 +1,89 @@
+<template>
+  <div>
+    <img src="../assets/logo.png">
+    <mt-field label="用户名" placeholder="请输入用户名" v-model="username"></mt-field>
+    <mt-field label="密码" placeholder="请输入密码" type="password" v-model="password"></mt-field>
+    <mt-field label="密码确认" placeholder="请再次输入密码" type="password" v-model="passwordConfirm"></mt-field>
+    <mt-field label="昵称" placeholder="请输入昵称" v-model="nickname"></mt-field>
+    <mt-radio class="sex-radio"
+        title="性别"
+        v-model="sex"
+        :options="[{label: '男',value: '0'},{label: '女',value: '1'}]">
+    </mt-radio>
+    <div  class="oprate-area">
+        <mt-button type="primary" size="large" @click="submit">提交注册</mt-button>
+    </div>
+    
+  </div>
+</template>
+
+<script>
+import axios from "axios"
+export default {
+  data(){
+      return{
+          username: '',
+          password: '',
+          passwordConfirm: '',
+          nickname: '',
+          sex: '0'
+          
+      }
+  },
+  methods:{
+      submit(){
+    
+
+        //   axios.post('/api/user/register', {
+        //         username: this.username,
+        //         password: this.password,
+        //         gender:this.sex,
+        //         nickname:this.nickname
+        //     })
+        //     .then(function (response) {
+        //         let res = response.data;
+        //         //if(res.success){
+        //             alert(res.msg)
+        //         //}
+        //     })
+        //     .catch(function (error) {
+        //         console.log(error);
+        //     });
+         this.ws.send(
+            JSON.stringify({
+                email: this.nickname,
+                username: this.username,
+                message:  this.password
+            }
+        ));
+        this.newMsg = ''; // Reset newMsg
+
+
+      }
+  },
+  created: function() {
+    var self = this;
+    this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a=222');
+    console.log(this.ws)
+    this.ws.addEventListener('message', function(e) {
+        var msg = JSON.parse(e.data);
+        console.log(msg)
+    });
+  }
+}
+</script>
+<style>
+    .sex-radio{
+        display: flex;
+        justify-content: flex-start;
+        padding-left: 50px;
+    }
+    .mint-radiolist-title{
+        font-size: 16px;
+        color: #333;
+    }
+    .oprate-area{
+        margin-top: 35px;
+        text-align: center;
+    }
+</style>
