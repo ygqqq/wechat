@@ -27,107 +27,111 @@ var (
 	chatChan = make(chan Message)
 )
 const (
-
+	//MessageType
+	OnlineRemind	= 1	//上线提醒
+	OfflineRemind   = 2 //下线提醒 
+	AddFriendReq	= 3 //添加好友请求
+	AgreeAdd		= 4 //同意好友请求
+	DisAgreeAdd 	= 5 //拒绝好友请求
+	
 )
-
-
-var chans = make(chan Message)           // broadcast channel
-//var test=make(map[int]string)
 
 type Message struct {
 	Src    string `json:"src"`
 	Dst string `json:"dst"`
 	Message  string `json:"message"`
+	MessageType int `json:"messagetype"`
 }
-// type MyConn struct{
-// 	userName string
-// 	ws *websocket.Conn
-// }
-type Y struct{
-	Name string	`json:"name"`
-	Age int		`json:"age"`
-}
+
+
 func main() {
-	go handleMessages()
+	// 处理添加好友请求
+	go handleFriendMessages()
+	// 处理用户上下线提醒消息
+	go handleConnMessages()
 	router := gin.Default()
 
 	//用户操作相关路由
 	u := router.Group("/user")
 	{
-		
 		//用户注册
 		u.POST("/register", user.Register)
+		//用户登陆
 		u.POST("/login",user.Login)
-		u.GET("/yy/:name",func(c *gin.Context){
-	
-			username, _ := c.Cookie("username")
-			c.JSON(200, gin.H{
-				"success" : true,
-				"msg": "ok",
-				"data": "hahaha"+username,
-			})
-			return
-		})
-		u.GET("/ws",func(c *gin.Context){
-				
-			    upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-				ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-				
-				//myConn := MyConn{c.Query("a"),ws}
-				if err != nil {
-					log.Fatal(err)
-				}
-				clients[c.Query("a")] = ws
-				fmt.Println(c.Query("a")+"来了.......................")
-				// Make sure we close the connection when the function returns
-				defer func(){
-					fmt.Println(c.Query("a")+".....................离开了")
-					delete(clients, c.Query("a"))
-					ws.Close()
-				}()
-	
-				for {
-					var msg Message            // Read in a new message as JSON and map it to a Message object
-					err := ws.ReadJSON(&msg)
-					//fmt.Println(msg.Src,msg.Dst,msg.Message)
-					if err != nil {
-						log.Printf("error: %v", err)
-						delete(clients, msg.Src)
-						break
-					}
-					
-					// msg = Message{
-					// 	Email:"haha ",
-					// }
-					// Send the newly received message to the broadcast channel
-					chans <- msg        
-				}
-			})
-
 	}
-	fmt.Println("----------------------------------")
+	//websocket入口
+	router.GET("/ws",wsConnHandler)
+
 	router.Run(":8000") // listen and serve on 0.0.0.0:8000
 }
-func handleMessages() {
+func wsConnHandler(c *gin.Context){
+	//建立ws连接
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	//获取客户端传来的用户名cookie，用于标示是哪个客户端
+	userName := c.Query("a")
+	if err != nil {
+		log.Fatal(err)
+	}
+	clients[userName] = ws
+	//ws连接之后，向onlineChan通道传递消息，通知所有在线好友
+	onlineChan <- Message{
+		Src: userName,
+		MessageType: OnlineRemind,
+		Message: userName+"上线啦",
+	}
+	//ws断开连接
+	defer func(){
+		onlineChan <- Message{
+			Src: userName,
+			MessageType: OnlineRemind,
+			Message: userName+"下线啦",
+		}
+		delete(clients, userName)
+		ws.Close()
+	}()
 	for {
-		// Grab the next message from the broadcast channel
-
-		msg := <-chans
-		fmt.Println(msg)
-		//Send it out to every client that is currently connected
-		clients[msg.Dst].WriteJSON(msg)
-		// for username,clientWs := range clients {
-		// 	fmt.Println(username,msg.Src,msg.Dst,msg.Message)
-		// 	if(msg.Dst == username){
-		// 		//err :=clientWs.WriteMessage(1,[]byte(msg.Message))
-		// 		err := clientWs.WriteJSON(msg)
-		// 		if err != nil {
-		// 			log.Printf("error: %v", err)
-		// 			clientWs.Close()
-		// 			delete(clients, username)
-		// 		}
-		// 	}
-		// }
+		//当有客户端发送消息过来，判断消息类型，分配给相应的消息处理管道
+		var msg Message            
+		ws.ReadJSON(&msg)
+		switch msg.MessageType{
+		//添加、同意、拒绝好友请求	
+		case AddFriendReq,AgreeAdd,DisAgreeAdd:
+			addFriendChan <- msg
+		}     
+	}
+}
+// 处理好友相关请求
+func handleFriendMessages() {
+	for {
+		msg := <- addFriendChan
+		if ws,ok := clients[msg.Dst]; ok {
+			//如果是同意好友请求
+			if msg.MessageType == AgreeAdd {
+				dstUser := user.GetUserByName(msg.Dst)
+				srcUser := user.GetUserByName(msg.Src)
+				//判断两者之前是否已经是好友
+				if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
+					//将两者的好友列表append对方的用户名
+					dstUser.AddOrDelFriendByName(msg.Src)
+					srcUser.AddOrDelFriendByName(msg.Dst)
+					msg.Message = "添加成功"
+				}
+				
+			}
+			ws.WriteJSON(msg)
+		}
+	}
+}
+func handleConnMessages(){
+	for{
+		msg := <- onlineChan
+		for username,clientWs := range clients {
+			if err := clientWs.WriteJSON(msg);err != nil {
+				clientWs.Close()
+				delete(clients, username)
+			}
+		}
 	}
 }
 func Middleware(c *gin.Context) {

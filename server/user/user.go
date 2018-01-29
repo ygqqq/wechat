@@ -10,13 +10,32 @@ import(
 const URL = "127.0.0.1:27017"	//mongodb数据库地址
 var dbSession *mgo.Session 
 type User struct{
+	Id_   bson.ObjectId `bson:"_id"`
 	UserName string		`bson:"username"`
 	Password string		`bson:"password"`
 	NickName string		`bson:"nickname"`
-	Gender string		`bson:"gender"` //0：男　1：女
+	Gender string		`bson:"gender"`  //0：男　1：女
 	CreateAt time.Time  `bson:"create_at"`
 	Friends []string	`bson:"friends"`
-	Status	int		//0:下线　1:在线
+	Status	int			`bson:"status"`	 //0:下线　1:在线
+}
+//　判断某人是否为自己的好友
+func (u *User)IsMyFriend(username string) bool{
+	for _,un := range u.Friends{
+		if un == username {
+			return true
+		}
+	}
+	return false
+}
+
+// 添加、删除好友
+func (u *User)AddOrDelFriendByName(username string) {
+	//获取mongodb数据库连接
+	session := getDbSession()
+	defer session.Close()
+	db := session.DB("wechat").C("users")
+	db.Update(bson.M{"username": u.UserName},bson.M{"$push": bson.M{"friends": username}})
 }
 
 // 防止每次操作mongo都重新建立连接
@@ -30,6 +49,8 @@ func getDbSession() *mgo.Session{
 	}
 	return dbSession.Clone()
 }
+
+// 注册用户
 func Register(c *gin.Context){
 	//获取mongodb数据库连接
 	session := getDbSession()
@@ -63,6 +84,7 @@ func Register(c *gin.Context){
 	}
 	//通过验证后，将用户提交的信息插入数据库
 	insertUser := &User{
+		Id_ : bson.NewObjectId(),
 		UserName : user.UserName,
 		Password : utils.Md5(user.Password),
 		NickName : user.NickName,
@@ -90,6 +112,7 @@ func Register(c *gin.Context){
 	}
 }
 
+// 用户登陆
 func Login(c *gin.Context){
 	//获取mongodb数据库连接
 	session := getDbSession()
@@ -140,3 +163,17 @@ func Login(c *gin.Context){
 	})
 	return
 }
+
+// 根据用户名获得用户
+func GetUserByName(username string) User{
+
+	//获取mongodb数据库连接
+	session := getDbSession()
+	defer session.Close()
+	db := session.DB("wechat").C("users")
+	var dbUser User
+	db.Find(bson.M{"username": username}).One(&dbUser)
+	return dbUser
+}
+
+

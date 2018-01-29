@@ -19,7 +19,7 @@
 
         <mt-button type="primary" size="large" @click="submit">提交注册</mt-button>
         <br>
-         <mt-button type="primary" size="large" @click="send">发送消息</mt-button>
+         <mt-button type="primary" size="large" @click="send">添加好友</mt-button>
         <br>
          <mt-button type="primary" size="large" @click="init">初始化ws</mt-button>
     </div>
@@ -76,7 +76,8 @@ export default {
             JSON.stringify({
                 src: this.username,
                 dst: this.rec_user,
-                message: this.password
+                message: this.password,
+                messagetype: 4
             }
         ));
       },
