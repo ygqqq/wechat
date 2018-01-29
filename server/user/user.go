@@ -2,7 +2,7 @@ package user
 import(
 	"../utils"
 	"time"
-	
+	"net/http"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"github.com/gin-gonic/gin"
@@ -77,6 +77,10 @@ func Register(c *gin.Context){
 	}else{
 		//写入redis
 		utils.SetValue(insertUser.UserName,*insertUser,3600)
+		
+		cookie := http.Cookie{Name: "username", Value: insertUser.UserName, Path: "/", MaxAge: 86400}
+		http.SetCookie(c.Writer, &cookie)
+
 		c.JSON(200, gin.H{
 			"success" : true,
 			"msg": "注册成功",

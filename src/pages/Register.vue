@@ -2,9 +2,14 @@
   <div>
     <img src="../assets/logo.png">
     <mt-field label="用户名" placeholder="请输入用户名" v-model="username"></mt-field>
+    <mt-field label="收信人" placeholder="请输入收信人" v-model="rec_user"></mt-field>
+
     <mt-field label="密码" placeholder="请输入密码" type="password" v-model="password"></mt-field>
     <mt-field label="密码确认" placeholder="请再次输入密码" type="password" v-model="passwordConfirm"></mt-field>
     <mt-field label="昵称" placeholder="请输入昵称" v-model="nickname"></mt-field>
+
+
+
     <mt-radio class="sex-radio"
         title="性别"
         v-model="sex"
@@ -12,6 +17,8 @@
     </mt-radio>
     <div  class="oprate-area">
         <mt-button type="primary" size="large" @click="submit">提交注册</mt-button>
+        <br>
+         <mt-button type="primary" size="large" @click="send">发送消息</mt-button>
     </div>
     
   </div>
@@ -26,49 +33,57 @@ export default {
           password: '',
           passwordConfirm: '',
           nickname: '',
-          sex: '0'
+          sex: '0',
+          rec_user: ''
           
       }
   },
   methods:{
       submit(){
-    
-
-        //   axios.post('/api/user/register', {
-        //         username: this.username,
-        //         password: this.password,
-        //         gender:this.sex,
-        //         nickname:this.nickname
-        //     })
-        //     .then(function (response) {
-        //         let res = response.data;
-        //         //if(res.success){
-        //             alert(res.msg)
-        //         //}
-        //     })
-        //     .catch(function (error) {
-        //         console.log(error);
-        //     });
-         this.ws.send(
-            JSON.stringify({
-                email: this.nickname,
+          axios.post('/api/user/register', {
                 username: this.username,
+                password: this.password,
+                gender:this.sex,
+                nickname:this.nickname
+            })
+            .then(function (response) {
+                let res = response.data;
+                //if(res.success){
+                    alert(res.msg)
+                //}
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+      },
+      send(){
+ 
+        //console.log(this.ws)
+        this.ws.addEventListener('message', function(e) {
+            //var msg = JSON.parse(e.data);
+            console.log(e.data)
+        });
+        this.ws.send(
+            JSON.stringify({
+                src:this.getCookie("username"),
+                dst:this.rec_user,
                 message:  this.password
             }
         ));
         this.newMsg = ''; // Reset newMsg
-
-
-      }
+      },
+      getCookie(name) {
+        var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+        if (arr = document.cookie.match(reg))
+            return (arr[2]);
+        else
+            return null;
+    }
   },
   created: function() {
-    var self = this;
-    this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a=222');
-    console.log(this.ws)
-    this.ws.addEventListener('message', function(e) {
-        var msg = JSON.parse(e.data);
-        console.log(msg)
-    });
+      var self = this;
+      let name = this.getCookie("username")
+      this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a='+name);
   }
 }
 </script>
