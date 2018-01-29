@@ -1,5 +1,22 @@
 package kafka
 
+import(
+    //"github.com/Shopify/sarama"
+)
+type U struct{
+    Name string `json:"name"`
+    Age int `json:"age"`
+    encoded []byte
+    err error
+}
+func test(){
+    // sarama.AsyncProducer.Input() <- &sarama.ProducerMessage{
+    //     Topic: "test",
+    //     Key: nil,
+         
+    //     Value: &U{"ygq",18}, 
+    // }
+}
 // func sendMsg(){
 // 	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, nil)
 // 	if err != nil {

@@ -105,21 +105,39 @@ func wsConnHandler(c *gin.Context){
 func handleFriendMessages() {
 	for {
 		msg := <- addFriendChan
-		if ws,ok := clients[msg.Dst]; ok {
-			//如果是同意好友请求
-			if msg.MessageType == AgreeAdd {
-				dstUser := user.GetUserByName(msg.Dst)
-				srcUser := user.GetUserByName(msg.Src)
-				//判断两者之前是否已经是好友
-				if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
-					//将两者的好友列表append对方的用户名
-					dstUser.AddOrDelFriendByName(msg.Src)
-					srcUser.AddOrDelFriendByName(msg.Dst)
-					msg.Message = "添加成功"
-				}
-				
+		//首先要判断消息类型
+		switch msg.MessageType{
+		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
+		case AddFriendReq:
+			_,err := user.GetUserByName(msg.Dst)
+			if err != nil {
+				msg.Message = "用户不存在"
+				clients[msg.Src].WriteJSON(msg)
 			}
-			ws.WriteJSON(msg)
+			//如果目标用户存在　并且在线，则给目标用户推送加好友请求
+			if ws,ok := clients[msg.Dst]; ok {
+				ws.WriteJSON(msg)
+			}else{
+				//目标用户不在线，给发起请求的用户推送消息
+				msg.Message = "用户不在线"
+				clients[msg.Src].WriteJSON(msg)
+			}
+		case AgreeAdd:
+			//如果是同意好友请求
+			dstUser,_ := user.GetUserByName(msg.Dst)
+			srcUser,_ := user.GetUserByName(msg.Src)
+			//判断两者之前是否已经是好友
+			if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
+				//将两者的好友列表append对方的用户名
+				dstUser.AddOrDelFriendByName(msg.Src)
+				srcUser.AddOrDelFriendByName(msg.Dst)
+				msg.Message = "添加成功"
+			}
+			clients[msg.Src].WriteJSON(msg)
+			//如果对方也在线，给对方页发送推送
+			if ws,ok := clients[msg.Dst]; ok {
+				ws.WriteJSON(msg)
+			}
 		}
 	}
 }

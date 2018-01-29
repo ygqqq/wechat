@@ -3,6 +3,7 @@ import(
 	"../utils"
 	"time"
 	"net/http"
+	"encoding/json"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"github.com/gin-gonic/gin"
@@ -104,9 +105,12 @@ func Register(c *gin.Context){
 		utils.SetValue(insertUser.UserName,*insertUser,3600)
 		cookie := http.Cookie{Name: "username", Value: (*insertUser).UserName, Path: "/", MaxAge: 86400}
 		http.SetCookie(c.Writer, &cookie)
+		insertUser.Password = ""
+		strUser,_ := json.Marshal(insertUser)
 		c.JSON(200, gin.H{
 			"success" : true,
 			"msg": "注册成功",
+			"user": string(strUser),
 		})
 		return
 	}
@@ -157,23 +161,26 @@ func Login(c *gin.Context){
 	utils.SetValue(dbUser.UserName,dbUser,3600)
 	cookie := http.Cookie{Name: "username", Value: dbUser.UserName, Path: "/", MaxAge: 86400}
 	http.SetCookie(c.Writer, &cookie)
+	dbUser.Password = ""
+
+	strUser,_ := json.Marshal(dbUser)
 	c.JSON(200, gin.H{
 		"success" : true,
-		"msg": "登陆成功",
+		"msg" : "登陆成功",
+		"user" : strUser,
 	})
 	return
 }
 
 // 根据用户名获得用户
-func GetUserByName(username string) User{
-
+func GetUserByName(username string) (User,error){
 	//获取mongodb数据库连接
 	session := getDbSession()
 	defer session.Close()
 	db := session.DB("wechat").C("users")
 	var dbUser User
-	db.Find(bson.M{"username": username}).One(&dbUser)
-	return dbUser
+	err := db.Find(bson.M{"username": username}).One(&dbUser)
+	return dbUser,err
 }
 
 

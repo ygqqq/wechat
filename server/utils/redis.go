@@ -4,7 +4,6 @@ import(
 	"time"
 	"reflect"
 	"encoding/json"
-	"os"
 	"strconv"
 )
 //redis连接池实例
@@ -38,8 +37,7 @@ func SetValue(key string,value interface{}, second int) bool{
 	//如果要设置的value是struct类型，则通过将其序列化成json字符串
 	if t == "struct" {
 		b,_ := json.Marshal(value)
-		os.Stdout.Write(b)
-		_,err := c.Do("SET",key,b,"EX",strconv.Itoa(second))
+		_,err := c.Do("SET",key,string(b),"EX",strconv.Itoa(second))
 		return err == nil
 	}else{
 		_,err := c.Do("SET",key,value,"EX",strconv.Itoa(second))
