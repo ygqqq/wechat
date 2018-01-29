@@ -16,9 +16,12 @@
         :options="[{label: '男',value: '0'},{label: '女',value: '1'}]">
     </mt-radio>
     <div  class="oprate-area">
+
         <mt-button type="primary" size="large" @click="submit">提交注册</mt-button>
         <br>
          <mt-button type="primary" size="large" @click="send">发送消息</mt-button>
+        <br>
+         <mt-button type="primary" size="large" @click="init">初始化ws</mt-button>
     </div>
     
   </div>
@@ -56,21 +59,24 @@ export default {
                 console.log(error);
             });
       },
-      send(){
- 
-        //console.log(this.ws)
+      init(){
+        this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a='+this.username);
         this.ws.addEventListener('message', function(e) {
-            //var msg = JSON.parse(e.data);
-            console.log(e.data)
+            var msg = JSON.parse(e.data);
+            console.log(msg)
         });
+      },
+      send(){
+          
+        //console.log(this.ws)
+ 
         this.ws.send(
             JSON.stringify({
-                src:this.getCookie("username"),
-                dst:this.rec_user,
-                message:  this.password
+                src: this.username,
+                dst: this.rec_user,
+                message: this.password
             }
         ));
-        this.newMsg = ''; // Reset newMsg
       },
       getCookie(name) {
         var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
@@ -82,8 +88,8 @@ export default {
   },
   created: function() {
       var self = this;
-      let name = this.getCookie("username")
-      this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a='+name);
+      //let name = this.getCookie("username")
+      //this.ws = new WebSocket('ws://127.0.0.1:8000/user/ws?a='+name);
   }
 }
 </script>

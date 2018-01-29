@@ -8,12 +8,13 @@ import (
 	"log"
 	"net/http"
 	"github.com/gorilla/websocket"
+
 	"strconv"
 	//"github.com/garyburd/redigo/redis"
 	//"./utils"
 )
 var clients = make(map[string]*websocket.Conn) // connected clients
-var broadcast = make(chan Message)           // broadcast channel
+var chans = make(chan Message)           // broadcast channel
 //var test=make(map[int]string)
 var count int
 var upgrader = websocket.Upgrader{}
@@ -60,9 +61,10 @@ func main() {
 				
 				//myConn := MyConn{c.Query("a"),ws}
 				if err != nil {
-						log.Fatal(err)
+					log.Fatal(err)
 				}
 				clients[c.Query("a")] = ws
+				fmt.Println(c.Query("a")+"来了.......................")
 				// Make sure we close the connection when the function returns
 				defer func(){
 					fmt.Println(c.Query("a")+".....................离开了")
@@ -73,18 +75,18 @@ func main() {
 				for {
 					var msg Message            // Read in a new message as JSON and map it to a Message object
 					err := ws.ReadJSON(&msg)
-					
+					//fmt.Println(msg.Src,msg.Dst,msg.Message)
 					if err != nil {
-							log.Printf("error: %v", err)
-							delete(clients, msg.Src)
-							break
+						log.Printf("error: %v", err)
+						delete(clients, msg.Src)
+						break
 					}
 					
 					// msg = Message{
 					// 	Email:"haha ",
 					// }
 					// Send the newly received message to the broadcast channel
-					broadcast <- msg        
+					chans <- msg        
 				}
 			})
 
@@ -95,20 +97,23 @@ func main() {
 func handleMessages() {
 	for {
 		// Grab the next message from the broadcast channel
-		msg := <-broadcast
-		// Send it out to every client that is currently connected
-		for username,clientWs := range clients {
-			if(msg.Dst == username){
-				err :=clientWs.WriteMessage(1,[]byte(msg.Message))
-				//err := clientWs.WriteJSON(msg.Message)
-				if err != nil {
-					log.Printf("error: %v", err)
-					clientWs.Close()
-					delete(clients, username)
-				}
-			}
 
-		}
+		msg := <-chans
+		fmt.Println(msg)
+		//Send it out to every client that is currently connected
+		clients[msg.Dst].WriteJSON(msg)
+		// for username,clientWs := range clients {
+		// 	fmt.Println(username,msg.Src,msg.Dst,msg.Message)
+		// 	if(msg.Dst == username){
+		// 		//err :=clientWs.WriteMessage(1,[]byte(msg.Message))
+		// 		err := clientWs.WriteJSON(msg)
+		// 		if err != nil {
+		// 			log.Printf("error: %v", err)
+		// 			clientWs.Close()
+		// 			delete(clients, username)
+		// 		}
+		// 	}
+		// }
 	}
 }
 func Middleware(c *gin.Context) {
