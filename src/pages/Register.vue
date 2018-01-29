@@ -44,7 +44,6 @@ export default {
   },
   methods:{
       submit(){
-          
           axios.post('/api/user/register', {
                 username: this.username,
                 password: this.password,
@@ -69,9 +68,7 @@ export default {
         });
       },
       send(){
-          
         //console.log(this.ws)
- 
         this.ws.send(
             JSON.stringify({
                 src: this.username,

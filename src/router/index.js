@@ -17,22 +17,27 @@ export default new Router({
     },
     {
       path: '/login',
+      name: 'login',
       component: Login
     },
     {
       path: '/register',
+      name: 'register',
       component: Register
     },
     {
       path: '/home',
+      name: 'home',
       component: Home
     },
     {
       path: '/addres',
+      name: 'addres',
       component: Addres
     },
     {
       path: '/message',
+      name: 'message',
       component: Message
     }
   ]
