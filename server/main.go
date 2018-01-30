@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"github.com/gorilla/websocket"
-
+	"encoding/json"
 	//"github.com/garyburd/redigo/redis"
-	//"./utils"
+	"./utils"
 )
 var (
 	//websockt对象
@@ -17,13 +17,15 @@ var (
 	// 保存所有客户端连接,key是用户名	
 	clients = make(map[string]*websocket.Conn) 
 	// 用户上线/下线的消息通道
-	onlineChan = make(chan Message,2)
+	onlineChan = make(chan Message,10)
 	// 用户添加好友请求的消息通道
-	addFriendChan  = make(chan Message,2)
+	addFriendChan  = make(chan Message,10)
 	// 用户删除好友请求的消息通道
-	delFriendChan  = make(chan Message,2)
+	delFriendChan  = make(chan Message,10)
 	// 用户聊天消息通道
-	chatChan = make(chan Message,2)
+	chatChan = make(chan Message,10)
+	// kafka消费者处理通道
+	kafkaChan = make(chan Message,10)
 )
 const (
 	//MessageType
@@ -50,8 +52,7 @@ func main() {
 	go handleFriendMessages()
 	// 处理用户上下线提醒消息
 	go handleConnMessages()
-	// 
-	go handlerWs()
+
 
 	router := gin.Default()
 
@@ -62,6 +63,18 @@ func main() {
 		u.POST("/register", user.Register)
 		//用户登陆
 		u.POST("/login",user.Login)
+		//获取所有好友
+		u.GET("/friends",func(c *gin.Context){
+			name := c.Query("name")
+			ur,_ := user.GetUserByName(name)
+			urs := ur.GetAllFriends()
+			strUser,_ := json.Marshal(urs)
+			c.JSON(200, gin.H{
+				"success" : true,
+				"msg": string(strUser),
+			})
+			return
+		})
 	}
 	//websocket入口
 	router.GET("/ws",wsConnHandler)
@@ -69,17 +82,14 @@ func main() {
 	router.Run(":8000") // listen and serve on 0.0.0.0:8000
 }
 func wsConnHandler(c *gin.Context){
-	
 	//获取客户端传来的用户名cookie，用于标示是哪个客户端
 	userName := c.Query("a")
-
 	//建立ws连接
 	if _,ok := clients[userName]; !ok{
 		upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 		ws, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
 		clients[userName] = ws
 	}
-
 	//ws连接之后，向onlineChan通道传递消息，通知所有在线好友
 	onlineChan <- Message{
 		Src: userName,
@@ -90,7 +100,7 @@ func wsConnHandler(c *gin.Context){
 	defer func(){
 		onlineChan <- Message{
 			Src: userName,
-			MessageType: OnlineRemind,
+			MessageType: OfflineRemind,
 			Message: userName+"下线啦",
 		}
 		if _,ok := clients[userName]; ok{
@@ -111,21 +121,15 @@ func wsConnHandler(c *gin.Context){
 		switch msg.MessageType{
 		//添加、同意、拒绝好友请求	
 		case AddFriendReq,AgreeAdd,DisAgreeAdd:
-			fmt.Println("有人要添加了")
 			addFriendChan <- msg
-		case 8:
-			fmt.Println("断开了")
 		}     
 	}
 }
-func handlerWs(){
 
-}
 // 处理好友相关请求
 func handleFriendMessages() {
 	for {
 		msg := <- addFriendChan
-		fmt.Println("这里处理添加请求")
 		//首先要判断消息类型
 		switch msg.MessageType{
 		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
@@ -161,8 +165,8 @@ func handleFriendMessages() {
 			//判断两者之前是否已经是好友
 			if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
 				//将两者的好友列表append对方的用户名
-				dstUser.AddOrDelFriendByName(msg.Src)
-				srcUser.AddOrDelFriendByName(msg.Dst)
+				dstUser.AddFriendByName(msg.Src)
+				srcUser.AddFriendByName(msg.Dst)
 				msg.Message = "添加成功"
 				msg.MessageType = NormalMsg
 				clients[msg.Src].WriteJSON(msg)
@@ -173,23 +177,31 @@ func handleFriendMessages() {
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
-	
-			//如果对方也在线，给对方页发送推送
-			// if ws,ok := clients[msg.Dst]; ok {
-			// 	ws.WriteJSON(msg)
-			// 	return
-			// }
 		}
 	}
 }
+//处理好友上线下线的消息
 func handleConnMessages(){
 	for{
 		msg := <- onlineChan
+		srcUser,_ := user.GetUserByName(msg.Src)
+			
 		for username,clientWs := range clients {
+			if !srcUser.IsMyFriend(username) {
+				continue
+			}
 			if err := clientWs.WriteJSON(msg);err != nil {
 				clientWs.Close()
 				delete(clients, username)
 			}
+			//修改redis在线状态
+			if msg.MessageType == OnlineRemind {
+				srcUser.Status = 1
+			}else{
+				srcUser.Status = 0
+			}
+			utils.SetValue(msg.Src,srcUser,3600)
+			// 推送到kafka，进行数据库写入
 		}
 	}
 }
