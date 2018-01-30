@@ -28,6 +28,7 @@ var (
 )
 const (
 	//MessageType
+	Error		    = 0 //错误消息
 	OnlineRemind	= 1	//上线提醒
 	OfflineRemind   = 2 //下线提醒 
 	AddFriendReq	= 3 //添加好友请求
@@ -109,18 +110,27 @@ func handleFriendMessages() {
 		switch msg.MessageType{
 		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
 		case AddFriendReq:
-			_,err := user.GetUserByName(msg.Dst)
+			dstUser,err := user.GetUserByName(msg.Dst)
 			if err != nil {
 				msg.Message = "用户不存在"
 				clients[msg.Src].WriteJSON(msg)
+				return
+			}
+			if dstUser.IsMyFriend(msg.Src) {
+				msg.Message = "不要重复添加好友"
+				fmt.Println("不要重复添加好友")
+				clients[msg.Src].WriteJSON(msg)
+				return
 			}
 			//如果目标用户存在　并且在线，则给目标用户推送加好友请求
 			if ws,ok := clients[msg.Dst]; ok {
 				ws.WriteJSON(msg)
+				return
 			}else{
 				//目标用户不在线，给发起请求的用户推送消息
 				msg.Message = "用户不在线"
 				clients[msg.Src].WriteJSON(msg)
+				return
 			}
 		case AgreeAdd:
 			//如果是同意好友请求
@@ -132,11 +142,14 @@ func handleFriendMessages() {
 				dstUser.AddOrDelFriendByName(msg.Src)
 				srcUser.AddOrDelFriendByName(msg.Dst)
 				msg.Message = "添加成功"
+				clients[msg.Src].WriteJSON(msg)
+				return
 			}
-			clients[msg.Src].WriteJSON(msg)
+	
 			//如果对方也在线，给对方页发送推送
 			if ws,ok := clients[msg.Dst]; ok {
 				ws.WriteJSON(msg)
+				return
 			}
 		}
 	}
