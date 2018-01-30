@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	//"github.com/garyburd/redigo/redis"
 	"./utils"
+	"./kafka"
 )
 var (
 	//websockt对象
@@ -25,7 +26,8 @@ var (
 	// 用户聊天消息通道
 	chatChan = make(chan Message,10)
 	// kafka消费者处理通道
-	kafkaChan = make(chan Message,10)
+	//kafkaChan = make(chan Message,10)
+
 )
 const (
 	//MessageType
@@ -52,7 +54,8 @@ func main() {
 	go handleFriendMessages()
 	// 处理用户上下线提醒消息
 	go handleConnMessages()
-
+	// kafka消费者
+	go kafkaConsumer()
 
 	router := gin.Default()
 
@@ -188,7 +191,7 @@ func handleConnMessages(){
 	for{
 		msg := <- onlineChan
 		srcUser,_ := user.GetUserByName(msg.Src)
-			
+		kafka.SendMsg(msg)	
 		for username,clientWs := range clients {
 			if !srcUser.IsMyFriend(username) {
 				continue
@@ -207,6 +210,22 @@ func handleConnMessages(){
 			// 推送到kafka，进行数据库写入
 		}
 	}
+}
+
+func kafkaConsumer(){
+	consumer := kafka.GetConsumer()
+	for {
+		//goruntine exec
+		  select {
+			  // blocking <- channel operator
+			  case err := <-consumer.Errors():
+				fmt.Printf("Kafka error: %s\n", err)
+			  case msg := <-consumer.Messages():
+				m := &Message{}
+				json.Unmarshal(msg.Value, &m)
+				fmt.Println(m.Message)
+			}
+		}
 }
 func Middleware(c *gin.Context) {
 	id := c.Query("id")

@@ -1,72 +1,59 @@
 package kafka
 
 import(
-    //"github.com/Shopify/sarama"
+    "github.com/Shopify/sarama"
+    "encoding/json"
+    "fmt"
 )
-type U struct{
-    Name string `json:"name"`
-    Age int `json:"age"`
-    encoded []byte
-    err error
+
+var (
+    brokers = []string{"127.0.0.1:9092"}
+    topic   = "test"
+    topics  = []string{topic}
+    producer sarama.SyncProducer = nil
+    consumer sarama.PartitionConsumer = nil
+)
+
+func getConf() *sarama.Config {
+    conf := sarama.NewConfig()
+    conf.Producer.RequiredAcks = sarama.WaitForAll
+    conf.Producer.Return.Successes = true
+    conf.ChannelBufferSize = 1
+    conf.Version = sarama.V1_0_0_0
+    return conf
 }
-func test(){
-    // sarama.AsyncProducer.Input() <- &sarama.ProducerMessage{
-    //     Topic: "test",
-    //     Key: nil,
-         
-    //     Value: &U{"ygq",18}, 
-    // }
+func getProducer() sarama.SyncProducer{
+    if producer == nil {
+        producer, _ = sarama.NewSyncProducer(brokers, getConf())
+    }
+    return producer
 }
-// func sendMsg(){
-// 	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, nil)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	defer func() {
-// 		if err := producer.Close(); err != nil {
-// 			log.Fatalln(err)
-// 		}
-// 	}()
 
-// 	msg := &sarama.ProducerMessage{Topic: "test", Value: sarama.StringEncoder("testing 123")}
-// 	partition, offset, err := producer.SendMessage(msg)
-// 	if err != nil {
-// 		log.Printf("FAILED to send message: %s\n", err)
-// 	} else {
-// 		log.Printf("> message sent to partition %d at offset %d\n", partition, offset)
-// 	}
-// }
 
-func getMsg(){
-	// sarama.Logger = logger
-	// // 连接kafka消息服务器
-    // consumer, err := sarama.NewConsumer(strings.Split(kafka, ","), nil)
-    // if err != nil {
-    //     logger.Printf("Failed to start consumer: %s", err)
-    // }
-	// // consumer.Partitions 用户获取Topic上所有的Partitions. 消息服务器上已经创建了test这个topic,所以,在这里指定参数为test.
-	// partitionList, err := consumer.Partitions("test")
-	// if err != nil {
-	// 	logger.Println("Failed to get the list of partitions: ", err)
-	// }
+func GetConsumer() sarama.PartitionConsumer {
+    if consumer == nil {
+        cs, _ := sarama.NewConsumer(brokers, getConf())
+        consumer, _ = cs.ConsumePartition(topic, 0, sarama.OffsetNewest)
+    }
+    return consumer
+}
+func SendMsg(msg interface{}) error {
+    pro := getProducer()
+    json, err := json.Marshal(msg)
 
-	// for partition := range partitionList {
-    //     pc, err := consumer.ConsumePartition("test", int32(partition), sarama.OffsetNewest)
-    //     if err != nil {
-    //         logger.Printf("Failed to start consumer for partition %d: %s\n", partition, err)
-    //     }
-    //     defer pc.AsyncClose()
+    if err != nil {
+        return err
+    }
 
-    //     wg.Add(1)
+    msgLog := &sarama.ProducerMessage{
+        Topic: topic,
+        Value: sarama.StringEncoder(string(json)),
+    }
 
-    //     go func(sarama.PartitionConsumer) {
-    //         defer wg.Done()
-    //         for msg := range pc.Messages() {
-    //             fmt.Println("message is :", msg)
-    //             fmt.Printf("Partition:%d, Offset:%d, Key:%s, Value:%s", msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
-    //             fmt.Println()
-    //         }
-    //     }(pc)
-    // }
-    //wg.Wait()
+    _, _, err = pro.SendMessage(msgLog)
+    if err != nil {
+        fmt.Printf("Kafka error: %s\n", err)
+    }
+
+    return nil
 }
