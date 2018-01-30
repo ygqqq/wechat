@@ -170,6 +170,9 @@ func handleFriendMessages() {
 				msg.Message = "添加成功"
 				msg.MessageType = NormalMsg
 				clients[msg.Src].WriteJSON(msg)
+				if ws,ok := clients[msg.Dst]; ok {
+					ws.WriteJSON(msg)
+				}
 				break
 			}else{
 				msg.Message = "重复添加"
