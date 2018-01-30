@@ -18,7 +18,7 @@
 
 <script>
 import axios from "axios"
-
+import config from "../../config/local.config"
 const storage = window.localStorage
 const storageNameUser = 'dataLocalStorage__User'
 
@@ -38,11 +38,11 @@ export default {
         })
         .then(function (response) {
           if( response.data && response.data.success) {
-            var dataLocalStorage = {
-              username: 'zly'
-            }
-            document.cookie="name="+'zly'
-            storage.setItem((storageNameUser), JSON.stringify(dataLocalStorage))
+            // var dataLocalStorage = {
+            //   username: 'zly'
+            // }
+            // document.cookie="name="+'zly'
+            // storage.setItem((storageNameUser), JSON.stringify(dataLocalStorage))
 
             _this.$router.push({ name: 'message'});
           }

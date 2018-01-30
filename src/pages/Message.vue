@@ -1,6 +1,6 @@
 <template>
     <div>
-        <mt-header fixed :title="nowTitle">
+        <mt-header fixed :title="title">
           <router-link to="/" slot="left">
             <mt-button icon="back">返回</mt-button>
           </router-link>
@@ -10,6 +10,7 @@
             +
           </mt-button>
         </mt-header>
+        <mt-button type="primary" size="large" @click="init" style="margin-top:70px">初始化ws</mt-button>
       消息页面
     </div>
   </template>
@@ -33,7 +34,12 @@
       data () {
         return {
           nowTitle: '消息',
-          username: ''
+          username: this.getCookie("username")
+        }
+      },
+      computed:{
+        title(){
+          return this.getCookie("username")
         }
       },
       methods: {
@@ -71,18 +77,40 @@
             }
           })
         },
-      },
-      mounted () {
-        var _this = this
-        this.username = this.getCookie("username")
+        init(){
+          var _this = this
+          let username = this.getCookie("username")
 
-        this.ws = new WebSocket(config.wsUrl+'?a='+this.username) //注册WebSocket
-        this.ws.addEventListener('message', function(e) {  //监听WebSocket
-          var msg = JSON.parse(e.data);
-          if( msg.messagetype == 3) {
-            _this.agreeFriend(msg.src)
-          }
-        })
+          _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+          this.ws.addEventListener('message', function(e) {  //监听WebSocket
+            var msg = JSON.parse(e.data);
+            console.log(msg)
+            if( msg.messagetype == 3) {
+              _this.agreeFriend(msg.src)
+            }
+          })
+          this.ws.onclose = function(evt) {
+              _this.ws.send(
+                JSON.stringify({
+                  src: _this.username,
+                  messagetype: 8
+                }
+              ))
+          }; 
+        },
+      },
+      created () {
+        // var _this = this
+        // let username = this.getCookie("username")
+
+        // _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+        // this.ws.addEventListener('message', function(e) {  //监听WebSocket
+        //   var msg = JSON.parse(e.data);
+        //   console.log(msg)
+        //   if( msg.messagetype == 3) {
+        //     _this.agreeFriend(msg.src)
+        //   }
+        // })
       }
     }
   </script>
