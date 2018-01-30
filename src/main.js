@@ -17,3 +17,9 @@ new Vue({
   components: { App },
   template: '<App/>'
 })
+
+// OnlineRemind	= 1	//上线提醒
+// OfflineRemind   = 2 //下线提醒 
+// AddFriendReq	= 3 //添加好友请求
+// AgreeAdd		= 4 //同意好友请求
+// DisAgreeAdd 	= 5 //拒绝好友请求
