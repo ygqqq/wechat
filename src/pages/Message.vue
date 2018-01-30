@@ -10,7 +10,6 @@
             +
           </mt-button>
         </mt-header>
-        <mt-button type="primary" size="large" @click="init" style="margin-top:70px">初始化ws</mt-button>
       消息页面
     </div>
   </template>
@@ -23,11 +22,14 @@
 
     Vue.component(Header.name, Header)
 
+    const ErrorMsg = 0  //错误消息
     const OnlineRemind	= 1	//上线提醒
     const OfflineRemind   = 2 //下线提醒 
     const AddFriendReq	= 3 //添加好友请求
     const AgreeAdd		= 4 //同意好友请求
     const DisAgreeAdd 	= 5 //拒绝好友请求
+
+    const NormalMsg		= 10 //普通通知消息
 
     export default{
       name: 'message',
@@ -77,40 +79,19 @@
             }
           })
         },
-        init(){
-          var _this = this
-          let username = this.getCookie("username")
-
-          _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
-          this.ws.addEventListener('message', function(e) {  //监听WebSocket
-            var msg = JSON.parse(e.data);
-            console.log(msg)
-            if( msg.messagetype == 3) {
-              _this.agreeFriend(msg.src)
-            }
-          })
-          this.ws.onclose = function(evt) {
-              _this.ws.send(
-                JSON.stringify({
-                  src: _this.username,
-                  messagetype: 8
-                }
-              ))
-          }; 
-        },
       },
       created () {
-        // var _this = this
-        // let username = this.getCookie("username")
+        var _this = this
+        let username = this.getCookie("username")
 
-        // _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
-        // this.ws.addEventListener('message', function(e) {  //监听WebSocket
-        //   var msg = JSON.parse(e.data);
-        //   console.log(msg)
-        //   if( msg.messagetype == 3) {
-        //     _this.agreeFriend(msg.src)
-        //   }
-        // })
+        _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+        this.ws.addEventListener('message', function(e) {  //监听WebSocket
+          var msg = JSON.parse(e.data);
+          console.log(msg)
+          if( msg.messagetype == 3) {
+            _this.agreeFriend(msg.src)
+          }
+        })
       }
     }
   </script>

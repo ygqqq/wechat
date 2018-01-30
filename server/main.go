@@ -5,7 +5,6 @@ import (
 	"./user"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"github.com/gorilla/websocket"
 
@@ -28,13 +27,14 @@ var (
 )
 const (
 	//MessageType
-	Error		    = 0 //错误消息
+	ErrorMsg		= 0 //错误消息
 	OnlineRemind	= 1	//上线提醒
 	OfflineRemind   = 2 //下线提醒 
 	AddFriendReq	= 3 //添加好友请求
 	AgreeAdd		= 4 //同意好友请求
 	DisAgreeAdd 	= 5 //拒绝好友请求
 	
+	NormalMsg		= 10 //普通通知消息
 )
 
 type Message struct {
@@ -69,64 +69,54 @@ func main() {
 	router.Run(":8000") // listen and serve on 0.0.0.0:8000
 }
 func wsConnHandler(c *gin.Context){
-	//建立ws连接
 	
-	//ws, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
 	//获取客户端传来的用户名cookie，用于标示是哪个客户端
 	userName := c.Query("a")
-	//clients[userName] = ws
 
+	//建立ws连接
 	if _,ok := clients[userName]; !ok{
-		fmt.Println("新建立的链接")
 		upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		ws, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
 		clients[userName] = ws
-		if err != nil {
-			log.Fatal(err)
-		}
-	}else{
-		fmt.Println("老的链接")
 	}
 
 	//ws连接之后，向onlineChan通道传递消息，通知所有在线好友
-	// onlineChan <- Message{
-	// 	Src: userName,
-	// 	MessageType: OnlineRemind,
-	// 	Message: userName+"上线啦",
-	// }
+	onlineChan <- Message{
+		Src: userName,
+		MessageType: OnlineRemind,
+		Message: userName+"上线啦",
+	}
 	//ws断开连接
 	defer func(){
-		// onlineChan <- Message{
-		// 	Src: userName,
-		// 	MessageType: OnlineRemind,
-		// 	Message: userName+"下线啦",
-		// }
-		fmt.Println(userName+"断开...............")
+		onlineChan <- Message{
+			Src: userName,
+			MessageType: OnlineRemind,
+			Message: userName+"下线啦",
+		}
 		if _,ok := clients[userName]; ok{
 			clients[userName].Close()
 			delete(clients, userName)
-
 		}
 	}()
 
-	//for {
+	for {
 		//当有客户端发送消息过来，判断消息类型，分配给相应的消息处理管道
 		var msg Message            
 		err := clients[userName].ReadJSON(&msg)
 		if err != nil{
-			fmt.Println("错了")
 			clients[userName].Close()
 			delete(clients, userName)
+			break
 		}
-		// switch msg.MessageType{
-		// //添加、同意、拒绝好友请求	
-		// case AddFriendReq,AgreeAdd,DisAgreeAdd:
-		// 	fmt.Println("有人要添加了")
-		// 	addFriendChan <- msg
-		// case 8:
-		// 	fmt.Println("断开了")
-		// }     
-	//}
+		switch msg.MessageType{
+		//添加、同意、拒绝好友请求	
+		case AddFriendReq,AgreeAdd,DisAgreeAdd:
+			fmt.Println("有人要添加了")
+			addFriendChan <- msg
+		case 8:
+			fmt.Println("断开了")
+		}     
+	}
 }
 func handlerWs(){
 
@@ -143,12 +133,13 @@ func handleFriendMessages() {
 			dstUser,err := user.GetUserByName(msg.Dst)
 			if err != nil {
 				msg.Message = "用户不存在"
+				msg.MessageType = ErrorMsg
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
 			if dstUser.IsMyFriend(msg.Src) {
 				msg.Message = "不要重复添加好友"
-				fmt.Println("不要重复添加好友")
+				msg.MessageType = ErrorMsg
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
@@ -159,6 +150,7 @@ func handleFriendMessages() {
 			}else{
 				//目标用户不在线，给发起请求的用户推送消息
 				msg.Message = "用户不在线"
+				msg.MessageType = ErrorMsg
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
@@ -172,10 +164,12 @@ func handleFriendMessages() {
 				dstUser.AddOrDelFriendByName(msg.Src)
 				srcUser.AddOrDelFriendByName(msg.Dst)
 				msg.Message = "添加成功"
+				msg.MessageType = NormalMsg
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}else{
 				msg.Message = "重复添加"
+				msg.MessageType = ErrorMsg
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
