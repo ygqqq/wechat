@@ -13,10 +13,6 @@
         </div>
       </div>
     </div>
-    <div class="login-bgbox">
-      <img src="../content/images/bgLogin.jpg"/>
-    </div>
-    <div class="login-bgboxaa"></div>
   </div>
 </template>
 
@@ -31,16 +27,20 @@ export default {
   },
   methods:{
     login(){
+      const _this = this
         axios.post('/api/user/login', {
             username: this.username,
             password: this.password
         })
         .then(function (response) {
-            let res = response.data;
-                alert(res.msg)
+          console.log(response)
+          return false
+          if( response.data && response.data.success) {
+            _this.$router.push({ name: 'message'});
+          }
         })
         .catch(function (error) {
-            console.log(error);
+          alert(error);
         });
     }
   }
@@ -67,23 +67,8 @@ export default {
   position: relative;
   overflow: hidden;
 
-  .login-bgbox{
-    filter: blur(55px);
-    // background-image: url('../content/images/bgLogin.jpg');
-    background-repeat: no-repeat;
-    background-size:150% 150%;
-    background-attachment: fixed;
-    background-position: center;
-    position: absolute;
-  }
-  .login-bgboxaa{
-    width: 100%;
-    height: 100%;
-    display: block;
-    position: absolute;
-    z-index: 2;
-  }
   .login-box{
+    background: url(../content/images/bgLogin.jpg) no-repeat 0 0 /100%;
     position: absolute;
     z-index: 3;
     width: 100%;
@@ -91,22 +76,20 @@ export default {
     display: flex;
 
     .login-box-flex{
-      width: 84%;
+      width: 88%;
       margin: auto;
+      border-radius: 10px;
+      padding: 20px 10px;
+      background: rgba(255, 255, 255, 0.4);
 
       .mint-cell{
-        background: rgba(-0,0,0, 0.5);
-        color: #fff;
-        margin: 20px 0;
-        border-radius: 5px;
-        padding: 4px 0;
-
-        .mint-cell-wrapper{
-          background-image: none;
-        }
+        font-weight: 700;
+        background: transparent;
       }
     }
   }
 }
+
+.mint-field-core{ color: red}
 
 </style>
