@@ -32,24 +32,23 @@ export default {
   methods:{
     login(){
       const _this = this
-        axios.post('/api/user/login', {
-            username: this.username,
-            password: this.password
-        })
-        .then(function (response) {
-          if( response.data && response.data.success) {
-            // var dataLocalStorage = {
-            //   username: 'zly'
-            // }
-            // document.cookie="name="+'zly'
-            // storage.setItem((storageNameUser), JSON.stringify(dataLocalStorage))
-
-            _this.$router.push({ name: 'message'});
-          }
-        })
-        .catch(function (error) {
-          alert(error);
-        });
+      axios.post('/api/user/login', {
+          username: this.username,
+          password: this.password
+      })
+      .then(function (response) {
+        if( response.data && response.data.success) {
+          // var dataLocalStorage = {
+          //   username: 'zly'
+          // }
+          // document.cookie="name="+'zly'
+          // storage.setItem((storageNameUser), JSON.stringify(dataLocalStorage))
+          _this.$router.push({ name: 'message'});
+        }
+      })
+      .catch(function (error) {
+        alert(error);
+      });
     }
   }
 }
