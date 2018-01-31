@@ -11,12 +11,15 @@
         </mt-button>
       </mt-header>
       <div class="message-box">
-        <ul>
-            <li v-for="item in myFriends" :key="item.Id">
-              <span>昵称：{{item.NickName}}</span>
-              <span>登陆名：{{item.UserName}}</span>
-            </li>
-          </ul>
+        <ul v-if="myFriends.length > 0">
+          <li v-for="item in myFriends" :key="item.Id">
+            <span>昵称：{{item.NickName}}</span>
+            <span>登陆名：{{item.UserName}}</span>
+          </li>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+        </ul>
+        <div v-if="myFriends.length <= 0">
+          好友列表为空，可点击右上角添加好友
+        </div>
       </div>
     </div>
   </template>
@@ -27,8 +30,6 @@
   import config from "../../config/local.config"
   import { Header } from 'mint-ui'
   import { MessageBox } from 'mint-ui'
-
-  Vue.component(Header.name, Header)
 
   const ErrorMsg = 0  //错误消息
   const OnlineRemind	= 1	//上线提醒
@@ -47,19 +48,21 @@
         myFriends: [],
         getData: () => {
           const _this = this
-          axios.get('/api/user/friends?name='+ this.username, {})
+          axios.get('/api/user/friends/'+ this.username, {})
           .then(function (response) {
             if (response.data.success) {
-              let friendsArr = JSON.parse(response.data.msg)
-              for (var i = 0; i < friendsArr.length; i++) {
-                let friends = {
-                  UserName: friendsArr[i].UserName,
-                  NickName: friendsArr[i].NickName,
-                  Id: friendsArr[i].Id_,
-                  Status: friendsArr[i].Status,
-                  CreateAt: friendsArr[i].CreateAt,
+              if (response.data.msg !== 'null') {
+                let friendsArr = JSON.parse(response.data.msg)
+                for (var i = 0; i < friendsArr.length; i++) {
+                  let friends = {
+                    UserName: friendsArr[i].UserName,
+                    NickName: friendsArr[i].NickName,
+                    Id: friendsArr[i].Id_,
+                    Status: friendsArr[i].Status,
+                    CreateAt: friendsArr[i].CreateAt,
+                  }
+                  _this.myFriends.push(friends)
                 }
-                _this.myFriends.push(friends)
               }
             } else {
               console.log('false')
@@ -78,7 +81,7 @@
     },
     methods: {
       addFriend () {
-        MessageBox.prompt('请输入好友姓名','').then(({ value, action }) => {
+        MessageBox.prompt('请输入好友姓名').then(({ value, action }) => {
           if( action == 'confirm') {
             if (value == null || value.length <= 0) {
               MessageBox('', '好友昵称不能为空') 
@@ -96,8 +99,10 @@
                 messagetype: AddFriendReq
               }
             ))
-          }
-        })
+          } 
+        },() => {
+          console.log(22)
+        });
       },
       getCookie(name) {
         var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
@@ -107,17 +112,24 @@
             return null;
       },
       agreeFriend (otherName) {
-        MessageBox.confirm(otherName+'想加你好友，同意吗？').then(action => {
-          if(action == 'confirm'){
-            this.ws.send(
-              JSON.stringify({
-                src: this.username,
-                dst: otherName,
-                messagetype: AgreeAdd
-              }
-            ))
-          }
-        })
+        MessageBox.confirm(otherName+'想加你好友，同意吗？').then(() => {
+          this.ws.send(
+            JSON.stringify({
+              src: this.username,
+              dst: otherName,
+              messagetype: AgreeAdd
+            }
+          ))
+        },() => {
+          console.log(333)
+          this.ws.send(
+            JSON.stringify({
+              src: this.username,
+              dst: otherName,
+              messagetype: DisAgreeAdd
+            }
+          ))
+        });
       },
     },
     created () {
@@ -127,11 +139,15 @@
       _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
       this.ws.addEventListener('message', function(e) {  //监听WebSocket
         var msg = JSON.parse(e.data);
+        console.log(msg)
         switch(msg.messagetype){
-          case 3:     
+          case ErrorMsg:     
+            MessageBox('', msg.message)
+            break
+          case AddFriendReq:     
             _this.agreeFriend(msg.src)
             break
-          case 10:     
+          case NormalMsg:     
             MessageBox('', msg.message)
             break
           // default:
@@ -140,8 +156,11 @@
         }
       })
 
+
+
       this.getData()
-    }
+    },
+    
   }
   </script>
   

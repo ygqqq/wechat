@@ -1,6 +1,8 @@
 <template>
   <div id="app">
     <router-view/>
+    <button><router-link to="/login">登录</router-link></button>
+    <button><router-link to="/register">注册</router-link></button>
     <ul class='flexNav' v-if="Show_flexNav">
       <router-link to="/message" tag="li">消息</router-link>
       <router-link to="/addres" tag="li">通讯录</router-link>

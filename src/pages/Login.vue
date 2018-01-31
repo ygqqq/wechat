@@ -44,6 +44,8 @@ export default {
           // document.cookie="name="+'zly'
           // storage.setItem((storageNameUser), JSON.stringify(dataLocalStorage))
           _this.$router.push({ name: 'message'});
+        } else {
+          alert(response.data.msg)
         }
       })
       .catch(function (error) {

@@ -193,9 +193,9 @@ func Login(c *gin.Context){
 }
 
 // 根据用户名获得用户
-func GetUserByName(username string) (User,error){
+func GetUserByName(username string,fromRedis bool) (User,error){
 	//先从redis获取用户，redis不存在则去数据库取
-	if str,err := utils.GetValue(username); len(str) >0 && err == nil{
+	if str,err := utils.GetValue(username); len(str) >0 && err == nil && fromRedis{
 		user := &User{}
 		json.Unmarshal([]byte(str), user)
 		return *user,nil

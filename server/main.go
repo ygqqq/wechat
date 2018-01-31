@@ -66,7 +66,7 @@ func main() {
 		//获取所有好友
 		u.GET("/friends/:name",func(c *gin.Context){
 			name := c.Param("name")
-			ur,_ := user.GetUserByName(name)
+			ur,_ := user.GetUserByName(name,false)
 			urs := ur.GetAllFriends()
 			strUser,_ := json.Marshal(urs)
 			c.JSON(200, gin.H{
@@ -134,7 +134,7 @@ func handleFriendMessages() {
 		switch msg.MessageType{
 		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
 		case AddFriendReq:
-			dstUser,err := user.GetUserByName(msg.Dst)
+			dstUser,err := user.GetUserByName(msg.Dst,false)
 			if err != nil {
 				msg.Message = "用户不存在"
 				msg.MessageType = ErrorMsg
@@ -160,8 +160,8 @@ func handleFriendMessages() {
 			}
 		case AgreeAdd:
 			//如果是同意好友请求
-			dstUser,_ := user.GetUserByName(msg.Dst)
-			srcUser,_ := user.GetUserByName(msg.Src)
+			dstUser,_ := user.GetUserByName(msg.Dst,false)
+			srcUser,_ := user.GetUserByName(msg.Src,false)
 			//判断两者之前是否已经是好友
 			if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
 				//将两者的好友列表append对方的用户名
@@ -187,7 +187,7 @@ func handleFriendMessages() {
 func handleConnMessages(){
 	for{
 		msg := <- onlineChan
-		srcUser,_ := user.GetUserByName(msg.Src)
+		srcUser,_ := user.GetUserByName(msg.Src,false)
 		kafka.SendToKafka(msg)	
 		for username,clientWs := range clients {
 			if !srcUser.IsMyFriend(username) {
@@ -220,7 +220,7 @@ func kafkaConsumer(){
 		// 用户在线状态更新到数据库	
 		case OnlineRemind,OfflineRemind:
 			fmt.Println(m.Message)
-			srcUser,_ := user.GetUserByName(m.Src)
+			srcUser,_ := user.GetUserByName(m.Src,true)
 			srcUser.UserOnlineStatus(m.MessageType%2)
 		}
 	}
