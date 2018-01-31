@@ -48,6 +48,15 @@ func (u *User)GetAllFriends() []User{
 	db.Find(bson.M{"username": bson.M{"$in": u.Friends}}).All(&users)
 	return users
 }
+// 用户下线修改 status 0:离线　1:在线
+func (u *User)UserOnlineStatus(status int){
+	//获取mongodb数据库连接
+	session := getDbSession()
+	defer session.Close()
+	db := session.DB("wechat").C("users")
+	db.Update(bson.M{"_id": u.Id_},bson.M{"$set": bson.M{"status": status}})
+
+}
 
 // 防止每次操作mongo都重新建立连接
 func getDbSession() *mgo.Session{

@@ -37,7 +37,7 @@ func GetConsumer() sarama.PartitionConsumer {
     }
     return consumer
 }
-func SendMsg(msg interface{}) error {
+func SendToKafka(msg interface{}) error {
     pro := getProducer()
     json, err := json.Marshal(msg)
 
@@ -49,11 +49,9 @@ func SendMsg(msg interface{}) error {
         Topic: topic,
         Value: sarama.StringEncoder(string(json)),
     }
-
     _, _, err = pro.SendMessage(msgLog)
     if err != nil {
         fmt.Printf("Kafka error: %s\n", err)
     }
-
     return nil
 }

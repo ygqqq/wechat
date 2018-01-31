@@ -25,9 +25,6 @@ var (
 	delFriendChan  = make(chan Message,10)
 	// 用户聊天消息通道
 	chatChan = make(chan Message,10)
-	// kafka消费者处理通道
-	//kafkaChan = make(chan Message,10)
-
 )
 const (
 	//MessageType
@@ -67,8 +64,8 @@ func main() {
 		//用户登陆
 		u.POST("/login",user.Login)
 		//获取所有好友
-		u.GET("/friends",func(c *gin.Context){
-			name := c.Query("name")
+		u.GET("/friends/:name",func(c *gin.Context){
+			name := c.Param("name")
 			ur,_ := user.GetUserByName(name)
 			urs := ur.GetAllFriends()
 			strUser,_ := json.Marshal(urs)
@@ -191,7 +188,7 @@ func handleConnMessages(){
 	for{
 		msg := <- onlineChan
 		srcUser,_ := user.GetUserByName(msg.Src)
-		kafka.SendMsg(msg)	
+		kafka.SendToKafka(msg)	
 		for username,clientWs := range clients {
 			if !srcUser.IsMyFriend(username) {
 				continue
@@ -212,20 +209,21 @@ func handleConnMessages(){
 	}
 }
 
+// kafka消费者　处理消息
 func kafkaConsumer(){
 	consumer := kafka.GetConsumer()
 	for {
-		//goruntine exec
-		  select {
-			  // blocking <- channel operator
-			  case err := <-consumer.Errors():
-				fmt.Printf("Kafka error: %s\n", err)
-			  case msg := <-consumer.Messages():
-				m := &Message{}
-				json.Unmarshal(msg.Value, &m)
-				fmt.Println(m.Message)
-			}
+		msg := <-consumer.Messages()
+		m := &Message{}
+		json.Unmarshal(msg.Value, &m)
+		switch m.MessageType{
+		// 用户在线状态更新到数据库	
+		case OnlineRemind,OfflineRemind:
+			fmt.Println(m.Message)
+			srcUser,_ := user.GetUserByName(m.Src)
+			srcUser.UserOnlineStatus(m.MessageType%2)
 		}
+	}
 }
 func Middleware(c *gin.Context) {
 	id := c.Query("id")
