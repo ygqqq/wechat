@@ -33,7 +33,10 @@ sudo docker build -t mygo .     # 一定得在server目录里面构建镜像，�
 ```
 经过漫长的等待，如果一切顺利的话，镜像应该是构建成功了，下面就需要运行docker容器
 ```bash
-# 这里是将docker运行在后台，并且将本地的server目录和docker容器中的/app目录建立映射关系，这样可以很方便开发，比如后台代码如果修改了，只需要重启go程序即可。-v后面的路径一定要正确　-v 你的server路径:/app   -p 你本地端口:docker容器端口　　后面的mygo是刚才构建的镜像名字，可以自定义
+# 这里是将docker运行在后台，并且将本地的server目录和docker容器中的/app目录建立映射关系
+# 这样可以很方便开发，比如后台代码如果修改了，只需要重启go程序即可。
+# -v后面的路径一定要正确　-v 你的server路径:/app   
+# -p 你本地端口:docker容器端口　　后面的mygo是刚才构建的镜像名字，可以自定义
 
 sudo docker run -d -p 8000:8000 -v /home/ygq/wechat/server/:/app --name=mygo mygo
 ```
@@ -54,7 +57,8 @@ module.exports = {
     //websocket调用接口     
     wsUrl : "ws://127.0.0.1:8000/ws"
 }
-//如果docker容器和你前端是跑在同一台机器上，就默认配置就可以，否则需要将ip改为docker容器所在的ip，注意不是docker容器自身的ip，而是宿主机的ip
+//如果docker容器和你前端是跑在同一台机器上，就默认配置就可以
+//否则需要将ip改为docker容器所在的ip，注意不是docker容器自身的ip，而是宿主机的ip
 ```
 修改完配置文件之后，一切完成，只差最后一步了
 ```bash
