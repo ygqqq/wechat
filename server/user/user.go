@@ -20,7 +20,7 @@ type User struct{
 	Friends []string	`bson:"friends"`
 	Status	int			`bson:"status"`	 //0:下线　1:在线
 }
-//　判断某人是否为自己的好友
+// 判断某人是否为自己的好友
 func (u *User)IsMyFriend(username string) bool{
 	for _,un := range u.Friends{
 		if un == username {
@@ -30,13 +30,23 @@ func (u *User)IsMyFriend(username string) bool{
 	return false
 }
 
-// 添加、删除好友
-func (u *User)AddOrDelFriendByName(username string) {
+// 添加好友
+func (u *User)AddFriendByName(username string) {
 	//获取mongodb数据库连接
 	session := getDbSession()
 	defer session.Close()
 	db := session.DB("wechat").C("users")
 	db.Update(bson.M{"username": u.UserName},bson.M{"$push": bson.M{"friends": username}})
+}
+// 获取某用户的所有好友
+func (u *User)GetAllFriends() []User{
+	//获取mongodb数据库连接
+	session := getDbSession()
+	defer session.Close()
+	db := session.DB("wechat").C("users")
+	var users []User
+	db.Find(bson.M{"username": bson.M{"$in": u.Friends}}).All(&users)
+	return users
 }
 
 // 防止每次操作mongo都重新建立连接
@@ -158,6 +168,7 @@ func Login(c *gin.Context){
 		return
 	}
 	//密码正确则登陆成功，写入redis、cookie
+	dbUser.Status = 1 //修改用户的在线状态
 	utils.SetValue(dbUser.UserName,dbUser,3600)
 	cookie := http.Cookie{Name: "username", Value: dbUser.UserName, Path: "/", MaxAge: 86400}
 	http.SetCookie(c.Writer, &cookie)
@@ -174,6 +185,12 @@ func Login(c *gin.Context){
 
 // 根据用户名获得用户
 func GetUserByName(username string) (User,error){
+	//先从redis获取用户，redis不存在则去数据库取
+	if str,err := utils.GetValue(username); len(str) >0 && err == nil{
+		user := &User{}
+		json.Unmarshal([]byte(str), user)
+		return *user,nil
+	}
 	//获取mongodb数据库连接
 	session := getDbSession()
 	defer session.Close()
