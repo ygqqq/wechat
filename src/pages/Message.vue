@@ -53,6 +53,11 @@
             if (response.data.success) {
               if (response.data.msg !== 'null') {
                 let friendsArr = JSON.parse(response.data.msg)
+                var userMessage = {
+                  username: friendsArr[0].Friends[0],
+                  friends: []
+                }
+                
                 for (var i = 0; i < friendsArr.length; i++) {
                   let friends = {
                     UserName: friendsArr[i].UserName,
@@ -61,8 +66,10 @@
                     Status: friendsArr[i].Status,
                     CreateAt: friendsArr[i].CreateAt,
                   }
-                  _this.myFriends.push(friends)
+                  userMessage.friends.push(friends)
                 }
+                //保存到vuex
+                _this.$store.state.userMessage = userMessage
               }
             } else {
               console.log('false')
@@ -70,7 +77,7 @@
           })
           .catch(function (error) {
             alert(error);
-          });
+          })
         }
       }
     },
@@ -135,8 +142,8 @@
     created () {
       var _this = this
       let username = this.getCookie("username")
-
-      _this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+      this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+      
       this.ws.addEventListener('message', function(e) {  //监听WebSocket
         var msg = JSON.parse(e.data);
         console.log(msg)
@@ -155,12 +162,11 @@
           //   break
         }
       })
-
-
-
-      this.getData()
-    },
-    
+      // if(!this.$store.state.userMessage.username){
+      //   this.getData()
+      // }
+      this.myFriends = this.$store.state.userMessage.friends
+    }
   }
   </script>
   
