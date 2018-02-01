@@ -32,6 +32,9 @@ func (u *User)IsMyFriend(username string) bool{
 
 // 添加好友
 func (u *User)AddFriendByName(username string) {
+	//将好友信息同步到redis
+	u.Friends = append(u.Friends,username)
+	utils.SetValue(u.UserName,*u,3600)
 	//获取mongodb数据库连接
 	session := getDbSession()
 	defer session.Close()
@@ -49,7 +52,7 @@ func (u *User)GetAllFriends() []User{
 	return users
 }
 // 用户下线修改 status 0:离线　1:在线
-func (u *User)UserOnlineStatus(status int){
+func (u *User)SetUserOnlineStatus(status int){
 	//获取mongodb数据库连接
 	session := getDbSession()
 	defer session.Close()
@@ -193,9 +196,9 @@ func Login(c *gin.Context){
 }
 
 // 根据用户名获得用户
-func GetUserByName(username string,fromRedis bool) (User,error){
+func GetUserByName(username string) (User,error){
 	//先从redis获取用户，redis不存在则去数据库取
-	if str,err := utils.GetValue(username); len(str) >0 && err == nil && fromRedis{
+	if str,err := utils.GetValue(username); len(str) >0 && err == nil{
 		user := &User{}
 		json.Unmarshal([]byte(str), user)
 		return *user,nil

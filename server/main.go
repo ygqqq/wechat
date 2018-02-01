@@ -66,7 +66,7 @@ func main() {
 		//获取所有好友
 		u.GET("/friends/:name",func(c *gin.Context){
 			name := c.Param("name")
-			ur,_ := user.GetUserByName(name,false)
+			ur,_ := user.GetUserByName(name)
 			urs := ur.GetAllFriends()
 			strUser,_ := json.Marshal(urs)
 			c.JSON(200, gin.H{
@@ -134,7 +134,7 @@ func handleFriendMessages() {
 		switch msg.MessageType{
 		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
 		case AddFriendReq:
-			dstUser,err := user.GetUserByName(msg.Dst,false)
+			dstUser,err := user.GetUserByName(msg.Dst)
 			if err != nil {
 				msg.Message = "用户不存在"
 				msg.MessageType = ErrorMsg
@@ -160,8 +160,8 @@ func handleFriendMessages() {
 			}
 		case AgreeAdd:
 			//如果是同意好友请求
-			dstUser,_ := user.GetUserByName(msg.Dst,false)
-			srcUser,_ := user.GetUserByName(msg.Src,false)
+			dstUser,_ := user.GetUserByName(msg.Dst)
+			srcUser,_ := user.GetUserByName(msg.Src)
 			//判断两者之前是否已经是好友
 			if !dstUser.IsMyFriend(msg.Src) && !srcUser.IsMyFriend(msg.Dst){
 				//将两者的好友列表append对方的用户名
@@ -187,8 +187,13 @@ func handleFriendMessages() {
 func handleConnMessages(){
 	for{
 		msg := <- onlineChan
-		srcUser,_ := user.GetUserByName(msg.Src,false)
+		srcUser,_ := user.GetUserByName(msg.Src)
+		//修改redis中用户在线状态
+		srcUser.Status = msg.MessageType % 2	
+		utils.SetValue(msg.Src,srcUser,3600)
+		//推送到kafka，进行数据库写入
 		kafka.SendToKafka(msg)	
+		//给好友推送上下线消息
 		for username,clientWs := range clients {
 			if !srcUser.IsMyFriend(username) {
 				continue
@@ -197,19 +202,11 @@ func handleConnMessages(){
 				clientWs.Close()
 				delete(clients, username)
 			}
-			//修改redis在线状态
-			if msg.MessageType == OnlineRemind {
-				srcUser.Status = 1
-			}else{
-				srcUser.Status = 0
-			}
-			utils.SetValue(msg.Src,srcUser,3600)
-			// 推送到kafka，进行数据库写入
 		}
 	}
 }
 
-// kafka消费者　处理消息
+// kafka消费者　处理消息(写入或修改数据库) 主要处理的消息有:用户上下线状态的更新、用户实时聊天记录的持久化
 func kafkaConsumer(){
 	consumer := kafka.GetConsumer()
 	for {
@@ -220,8 +217,8 @@ func kafkaConsumer(){
 		// 用户在线状态更新到数据库	
 		case OnlineRemind,OfflineRemind:
 			fmt.Println(m.Message)
-			srcUser,_ := user.GetUserByName(m.Src,true)
-			srcUser.UserOnlineStatus(m.MessageType%2)
+			srcUser,_ := user.GetUserByName(m.Src)
+			srcUser.SetUserOnlineStatus(m.MessageType%2)
 		}
 	}
 }
