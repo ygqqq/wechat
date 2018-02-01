@@ -20,6 +20,9 @@
                 <!-- <mt-button type="primary" size="large" @click="send">添加好友</mt-button>
                 <mt-button type="primary" size="large" @click="init">初始化ws</mt-button> -->
             </div>
+            <div class="register">
+            已有账号? <router-link  to="/login">前往登录</router-link>
+          </div>
         </div>
     </div>
 </template>
@@ -124,6 +127,16 @@ export default {
 }
 </script>
 <style scoped type="text/css"  lang="scss" >
+    .register{
+        color: #666;
+        font-size: 14px;
+        margin-top: 50px;
+        display: block;
+
+        a{
+            color: #26a2ff;
+        }
+    }
     .sex-radio{
         display: flex;
         justify-content: flex-start;
@@ -136,7 +149,7 @@ export default {
         color: inherit;
     }
     .oprate-area{
-        margin-top: 35px;
+        margin-top: 25px;
         text-align: center;
     }
 

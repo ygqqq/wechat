@@ -30,6 +30,7 @@
   import config from "../../config/local.config"
   import { Header } from 'mint-ui'
   import { MessageBox } from 'mint-ui'
+  import { getFriends } from '../content/script/getFriends'
 
   const ErrorMsg = 0  //错误消息
   const OnlineRemind	= 1	//上线提醒
@@ -45,40 +46,7 @@
       return {
         nowTitle: '消息',
         username: this.getCookie("username"),
-        myFriends: [],
-        getData: () => {
-          const _this = this
-          axios.get('/api/user/friends/'+ this.username, {})
-          .then(function (response) {
-            if (response.data.success) {
-              if (response.data.msg !== 'null') {
-                let friendsArr = JSON.parse(response.data.msg)
-                var userMessage = {
-                  username: friendsArr[0].Friends[0],
-                  friends: []
-                }
-                
-                for (var i = 0; i < friendsArr.length; i++) {
-                  let friends = {
-                    UserName: friendsArr[i].UserName,
-                    NickName: friendsArr[i].NickName,
-                    Id: friendsArr[i].Id_,
-                    Status: friendsArr[i].Status,
-                    CreateAt: friendsArr[i].CreateAt,
-                  }
-                  userMessage.friends.push(friends)
-                }
-                //保存到vuex
-                _this.$store.state.userMessage = userMessage
-              }
-            } else {
-              console.log('false')
-            }
-          })
-          .catch(function (error) {
-            alert(error);
-          })
-        }
+        myFriends: []
       }
     },
     computed:{
@@ -137,13 +105,20 @@
             }
           ))
         });
-      },
+      }
     },
     created () {
       var _this = this
       let username = this.getCookie("username")
-      this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSocket
+      this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSockets
       
+      this.ws.onopen = function () {
+        getFriends(this,_this.username).then(function(res){
+          _this.myFriends = res
+          _this.$store.state.userMessage = res
+        })
+      }
+
       this.ws.addEventListener('message', function(e) {  //监听WebSocket
         var msg = JSON.parse(e.data);
         console.log(msg)
@@ -165,7 +140,7 @@
       // if(!this.$store.state.userMessage.username){
       //   this.getData()
       // }
-      this.myFriends = this.$store.state.userMessage.friends
+      //this.myFriends = this.$store.state.userMessage.friends
     }
   }
   </script>

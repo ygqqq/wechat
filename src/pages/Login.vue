@@ -53,7 +53,6 @@ export default {
               }
               //保存到vuex
               _this.$store.state.userMessage = userMessage
-              
               _this.$router.push({ name: 'message'});
             }
           } else {
