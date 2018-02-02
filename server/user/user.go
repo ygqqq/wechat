@@ -20,6 +20,13 @@ type User struct{
 	Friends []string	`bson:"friends"`
 	Status	int			`bson:"status"`	 //0:下线　1:在线
 }
+type ChatRecord struct{
+	Id_   bson.ObjectId `bson:"_id"`
+	Src string			`bson:"src"`
+	Dst string			`bson:"dst"`
+	Msg string			`bson:"msg"`
+	CreateAt time.Time  `bson:"create_at"`
+}
 // 判断某人是否为自己的好友
 func (u *User)IsMyFriend(username string) bool{
 	for _,un := range u.Friends{
@@ -58,7 +65,6 @@ func (u *User)SetUserOnlineStatus(status int){
 	defer session.Close()
 	db := session.DB("wechat").C("users")
 	db.Update(bson.M{"_id": u.Id_},bson.M{"$set": bson.M{"status": status}})
-
 }
 
 // 防止每次操作mongo都重新建立连接
@@ -212,4 +218,19 @@ func GetUserByName(username string) (User,error){
 	return dbUser,err
 }
 
+// 添加聊天记录
+func AddChatRecord(src,dst,msg string){
+	//获取mongodb数据库连接
+	session := getDbSession()
+	defer session.Close()
+	db := session.DB("wechat").C("messages")
+	insertRecord := &ChatRecord{
+		Id_ : bson.NewObjectId(),
+		Src : src,
+		Dst : dst,
+		Msg : msg,
+		CreateAt : time.Now(), 
+	}
+	db.Insert(*insertRecord)
+}
 

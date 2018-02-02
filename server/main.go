@@ -34,7 +34,7 @@ const (
 	AddFriendReq	= 3 //添加好友请求
 	AgreeAdd		= 4 //同意好友请求
 	DisAgreeAdd 	= 5 //拒绝好友请求
-	
+	ChatMsg			= 6 //普通聊天消息
 	NormalMsg		= 10 //普通通知消息
 )
 
@@ -48,9 +48,11 @@ type Message struct {
 
 func main() {
 	// 处理添加好友请求
-	go handleFriendMessages()
+	go handleFriendMsg()
 	// 处理用户上下线提醒消息
-	go handleConnMessages()
+	go handleConnMsg()
+	// 处理好友实时聊天的消息
+	go handleChatMsg()
 	// kafka消费者
 	go kafkaConsumer()
 
@@ -68,11 +70,18 @@ func main() {
 			name := c.Param("name")
 			ur,_ := user.GetUserByName(name)
 			urs := ur.GetAllFriends()
-			strUser,_ := json.Marshal(urs)
-			c.JSON(200, gin.H{
-				"success" : true,
-				"msg": string(strUser),
-			})
+			if len(urs) > 0 {
+				strUser,_ := json.Marshal(urs)
+				c.JSON(200, gin.H{
+					"success" : true,
+					"msg": string(strUser),
+				})
+			}else{
+				c.JSON(200, gin.H{
+					"success" : false,
+					"msg": "好友列表为空",
+				})
+			}
 			return
 		})
 	}
@@ -122,12 +131,14 @@ func wsConnHandler(c *gin.Context){
 		//添加、同意、拒绝好友请求	
 		case AddFriendReq,AgreeAdd,DisAgreeAdd:
 			addFriendChan <- msg
+		case ChatMsg:
+			chatChan <- msg
 		}     
 	}
 }
 
 // 处理好友相关请求
-func handleFriendMessages() {
+func handleFriendMsg() {
 	for {
 		msg := <- addFriendChan
 		//首先要判断消息类型
@@ -180,11 +191,19 @@ func handleFriendMessages() {
 				clients[msg.Src].WriteJSON(msg)
 				break
 			}
+		case DisAgreeAdd:
+			//如果是拒绝好友请求,如果对方在线，则直接通知对方，否则不处理
+			if ws,ok := clients[msg.Dst]; ok {
+				msg.MessageType = NormalMsg
+				msg.Message = msg.Src + "拒绝添加你为好友"
+				ws.WriteJSON(msg)
+			}
+			break
 		}
 	}
 }
 //处理好友上线下线的消息
-func handleConnMessages(){
+func handleConnMsg(){
 	for{
 		msg := <- onlineChan
 		srcUser,_ := user.GetUserByName(msg.Src)
@@ -205,20 +224,34 @@ func handleConnMessages(){
 		}
 	}
 }
-
+//处理还有实时聊天的消息
+func handleChatMsg(){
+	for{
+		msg := <- chatChan
+		//如果对方在线，则实时将消息推送给对方
+		if ws,ok := clients[msg.Dst]; ok {
+			ws.WriteJSON(msg)
+		}
+		//推送到kafka，进行数据库写入,保存聊天记录
+		kafka.SendToKafka(msg)	
+	}
+}
 // kafka消费者　处理消息(写入或修改数据库) 主要处理的消息有:用户上下线状态的更新、用户实时聊天记录的持久化
 func kafkaConsumer(){
 	consumer := kafka.GetConsumer()
 	for {
-		msg := <-consumer.Messages()
+		msg := <- consumer.Messages()
 		m := &Message{}
 		json.Unmarshal(msg.Value, &m)
 		switch m.MessageType{
 		// 用户在线状态更新到数据库	
 		case OnlineRemind,OfflineRemind:
-			fmt.Println(m.Message)
 			srcUser,_ := user.GetUserByName(m.Src)
 			srcUser.SetUserOnlineStatus(m.MessageType%2)
+			break
+		case ChatMsg:
+			user.AddChatRecord(m.Src,m.Dst,m.Message)
+			break
 		}
 	}
 }
