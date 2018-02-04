@@ -122,6 +122,7 @@ func wsConnHandler(c *gin.Context){
 		//当有客户端发送消息过来，判断消息类型，分配给相应的消息处理管道
 		var msg Message            
 		err := clients[userName].ReadJSON(&msg)
+		
 		if err != nil{
 			clients[userName].Close()
 			delete(clients, userName)
@@ -145,11 +146,15 @@ func handleFriendMsg() {
 		switch msg.MessageType{
 		//如果是请求加好友，还要判断用户是否在线，先只做成只有在线才能加把	
 		case AddFriendReq:
+			
 			dstUser,err := user.GetUserByName(msg.Dst)
 			if err != nil {
 				msg.Message = "用户不存在"
 				msg.MessageType = ErrorMsg
+
 				clients[msg.Src].WriteJSON(msg)
+				//
+
 				break
 			}
 			if dstUser.IsMyFriend(msg.Src) {
@@ -228,7 +233,10 @@ func handleConnMsg(){
 func handleChatMsg(){
 	for{
 		msg := <- chatChan
+		fmt.Println(msg)
+		clients[msg.Src].WriteJSON(msg)
 		//如果对方在线，则实时将消息推送给对方
+
 		if ws,ok := clients[msg.Dst]; ok {
 			ws.WriteJSON(msg)
 		}

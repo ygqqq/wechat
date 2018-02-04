@@ -5,6 +5,7 @@ import Register from '@/pages/Register'
 import Home from '@/pages/Home'
 import Addres from '@/pages/Addres'
 import Message from '@/pages/Message'
+import Chat from '@/pages/Chat'
 
 Vue.use(Router)
 
@@ -39,6 +40,11 @@ export default new Router({
       path: '/message',
       name: 'message',
       component: Message
+    },
+    {
+      path: '/chat/:username',
+      name: 'chat',
+      component: Chat
     }
   ]
 })

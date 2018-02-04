@@ -21,7 +21,7 @@
 import axios from "axios"
 import config from "../../config/local.config"
 import { mapState,mapMutations,mapActions } from "vuex"
-import { getFriends } from "../content/script/getFriends"
+import { getFriends } from '../content/script/getFriends'
 
 const storage = window.localStorage
 const storageNameUser = 'dataLocalStorage__User'
@@ -35,29 +35,10 @@ export default {
         axios.get('/api/user/friends/'+ this.username, {})
         .then(function (response) {
           if (response.data.success) {
-            if (response.data.msg !== 'null') {
-              let friendsArr = JSON.parse(response.data.msg)
-              var userMessage = {
-                username: friendsArr[0].Friends[0],
-                friends: []
-              }
-              for (var i = 0; i < friendsArr.length; i++) {
-                let friends = {
-                  UserName: friendsArr[i].UserName,
-                  NickName: friendsArr[i].NickName,
-                  Id: friendsArr[i].Id_,
-                  Status: friendsArr[i].Status,
-                  CreateAt: friendsArr[i].CreateAt,
-                }
-                userMessage.friends.push(friends)
-              }
-              //保存到vuex
-              _this.$store.state.userMessage = userMessage
-              _this.$router.push({ name: 'message'});
-            }
-          } else {
-            console.log('false')
+            let res = JSON.parse(response.data.msg)
+            _this.$store.state.userMessage = res
           }
+          _this.$router.push({ name: 'message'});
         })
         .catch(function (error) {
           alert(error);
@@ -75,7 +56,6 @@ export default {
       .then(function (response) {
         if( response.data && response.data.success) {
           //getFriends(_this)
-          
           _this.getData()
           //_this.$router.push({ name: 'message'});
         } else {
@@ -88,6 +68,7 @@ export default {
     }
   },
   created () {
+
   }
 }
 </script>

@@ -1,21 +1,20 @@
 <template>
     <div>
-      <mt-header fixed :title="title">
-        <router-link to="/" slot="left">
-          <mt-button icon="back">返回</mt-button>
-        </router-link>
-        <!-- <mt-button icon="more" slot="right" class="hasMoreButton">
-        </mt-button> -->
-        <mt-button slot="right" class="addFriend" @click="addFriend">
-          +
-        </mt-button>
-      </mt-header>
+      <topHeader :headerTitle="headerTitle"></topHeader>
       <div class="message-box">
         <ul v-if="myFriends.length > 0">
-          <li v-for="item in myFriends" :key="item.Id">
-            <span>昵称：{{item.NickName}}</span>
-            <span>登陆名：{{item.UserName}}</span>
-          </li>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+          <router-link tag="li" v-for="item in myFriends" :key="item.Id" :to="'/chat/'+item.NickName" >
+            <p class="user-img">
+              <i>{{getName(item.NickName)}}</i>
+            </p>
+            <p class="user-mess">
+              <span>{{item.NickName}}</span>
+              <i>你的最新一条消息</i>
+            </p>
+            <em class="friend-state" :class="{ 'on' : item.Status? true : false}"></em>
+            <!-- <span>昵称：{{item.NickName}}</span>
+            <span>登陆名：{{item.UserName}}</span> -->
+          </router-link>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
         </ul>
         <div v-if="myFriends.length <= 0">
           好友列表为空，可点击右上角添加好友
@@ -28,9 +27,11 @@
   import Vue from "vue"
   import axios from "axios"
   import config from "../../config/local.config"
+  import topHeader from "../components/header"
   import { Header } from 'mint-ui'
   import { MessageBox } from 'mint-ui'
   import { getFriends } from '../content/script/getFriends'
+  import { mapState,mapMutations,mapActions } from "vuex"
 
   const ErrorMsg = 0  //错误消息
   const OnlineRemind	= 1	//上线提醒
@@ -38,88 +39,48 @@
   const AddFriendReq	= 3 //添加好友请求
   const AgreeAdd		= 4 //同意好友请求
   const DisAgreeAdd 	= 5 //拒绝好友请求
+  const ChatMsg			= 6 //普通聊天消息
   const NormalMsg		= 10 //普通通知消息
 
   export default{
     name: 'message',
     data () {
       return {
-        nowTitle: '消息',
-        username: this.getCookie("username"),
-        myFriends: []
+        nowTitle: '消息',  
+        headerTitle: this.$store.state.username
       }
     },
+    components: {topHeader},
     computed:{
+      ...mapState({
+        username: 'username',
+        myFriends: 'userMessage'
+      }),
       title(){
-        return this.getCookie("username")
+        return this.getCookie()
       }
-    },
+    }, 
     methods: {
-      addFriend () {
-        MessageBox.prompt('请输入好友姓名').then(({ value, action }) => {
-          if( action == 'confirm') {
-            if (value == null || value.length <= 0) {
-              MessageBox('', '好友昵称不能为空') 
-              return
-            }
-            console.log(value,this.username)
-            if (value == this.username) {
-              MessageBox('', '不能添加自己') 
-              return
-            }
-            this.ws.send(
-              JSON.stringify({
-                src: this.username,
-                dst: value,
-                messagetype: AddFriendReq
-              }
-            ))
-          } 
-        },() => {
-          console.log(22)
-        });
-      },
-      getCookie(name) {
-        var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
-        if (arr = document.cookie.match(reg))
-            return (arr[2]);
-        else
-            return null;
-      },
-      agreeFriend (otherName) {
-        MessageBox.confirm(otherName+'想加你好友，同意吗？').then(() => {
-          this.ws.send(
-            JSON.stringify({
-              src: this.username,
-              dst: otherName,
-              messagetype: AgreeAdd
-            }
-          ))
-        },() => {
-          console.log(333)
-          this.ws.send(
-            JSON.stringify({
-              src: this.username,
-              dst: otherName,
-              messagetype: DisAgreeAdd
-            }
-          ))
-        });
+      ...mapMutations([
+        'getCookie', 
+      ]),
+      getName (userName) {
+        return userName.substr(userName.length-1,1)
       }
     },
     created () {
-      var _this = this
-      let username = this.getCookie("username")
-      this.ws = new WebSocket(config.wsUrl+'?a='+username) //注册WebSockets
+      this.getCookie()
+
+      let ws = this.$store.state.ws
+      let _this = this
       
-      this.ws.onopen = function () {
-        getFriends(this,_this.username).then(function(res){
-          _this.myFriends = res
-          _this.$store.state.userMessage = res
+      let storeUserMessage = this.$store.state.userMessage
+      if (!storeUserMessage) {
+        getFriends(_this,_this.username).then(function(res){
+          storeUserMessage = res
         })
       }
-
-      this.ws.addEventListener('message', function(e) {  //监听WebSocket
+      ws.addEventListener('message', function(e) {  //监听WebSocket
         var msg = JSON.parse(e.data);
         console.log(msg)
         switch(msg.messagetype){
@@ -127,35 +88,97 @@
             MessageBox('', msg.message)
             break
           case AddFriendReq:     
-            _this.agreeFriend(msg.src)
+            _this.$store.commit('agreeFriend', msg.src)
             break
-          case NormalMsg:     
+          case NormalMsg:   
             MessageBox('', msg.message)
+            if (msg.message === '添加成功') {
+              getFriends(_this,_this.username).then(function(res){
+                storeUserMessage = res
+              })
+            }
             break
-          // default:
-          //   MessageBox('', msg.message)
-          //   break
+          case OnlineRemind:
+          case OfflineRemind:
+            _this.$store.commit('setState', msg)
+          case NormalMsg:
+            _this.$store.commit('reception', msg)
         }
       })
-      // if(!this.$store.state.userMessage.username){
-      //   this.getData()
+
+      // ws.onopen = function () {
+      //   getFriends(this,_this.username).then(function(res){
+      //     _this.myFriends = res
+      //     _this.$store.state.userMessage = res
+      //   })
       // }
-      //this.myFriends = this.$store.state.userMessage.friends
     }
   }
   </script>
   
   <style lang="scss" scoped type="text/css">
+  
     .addFriend{
       font-size: 26px;
     }
     .message-box{
-      margin-top: 40px;
+      padding: 44px 0 0;
 
-      ul li{
-        line-height: 40px;
-        height: 40px;
-        border-bottom: 1px solid #999;
+      ul {
+        
+        li{
+          padding: 0 10px;
+          line-height: 50px;
+          height: 50px;
+          clear: both;
+          display: flex;
+          background: #fff;
+
+          .user-img{
+            width: 36px;
+            height: 36px;
+            background: #3296fa;
+            border-radius: 50%;
+            color: #fff;
+            line-height: 36px;
+            margin-top: 7px;
+            flex:0 0 36px;
+          }
+
+          .user-mess{
+            flex: 1;
+            border-bottom: 1px solid #f3f3f4;
+            text-align: left;
+            padding: 6px 0 6px 10px;
+            display: flex;
+            flex-direction: column;
+
+            span{
+              display: block;
+              font-size: 14px;
+              line-height: 14px;
+              margin-bottom: 12px;
+            }
+            i{
+              font-size: 10px;
+              line-height: 10px;
+              color: #abadaf;
+            }
+          }
+
+          .friend-state{
+            width: 8px;
+            height: 8px;
+            flex:0 0 8px;
+            margin-top: 22px;
+            background: #bbb;
+            border-radius: 50%;
+
+            &.on{
+              background: #68bd6e;
+            }
+          }
+        }
       }
     }
   </style>
