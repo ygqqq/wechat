@@ -6,9 +6,11 @@ import { Toast } from 'mint-ui'
 Vue.use(Vuex)
 
 const state = {
-  username: ''
+  username: '',
+  ygq:'',
+  userFriends: []
   // ws 注册WebSockets
-  // userMessage 好友列表
+  // userFriends 好友列表
 }
 
 const mutations = {

@@ -50,7 +50,7 @@ export default {
               return
             }
             if (value == this.username) {
-              MessageBox('', '不能添加自己') 
+              MessageBox('', 'headerTitle不能添加自己') 
               return
             }
             this.$store.state.ws.send(

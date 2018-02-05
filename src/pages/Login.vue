@@ -29,21 +29,7 @@ export default {
   data () {
     return {
       username: '',
-      password: '',
-      getData: () => {
-        const _this = this
-        axios.get('/api/user/friends/'+ this.username, {})
-        .then(function (response) {
-          if (response.data.success) {
-            let res = JSON.parse(response.data.msg)
-            _this.$store.state.userMessage = res
-          }
-          _this.$router.push({ name: 'message'});
-        })
-        .catch(function (error) {
-          alert(error);
-        })
-      }
+      password: ''
     }
   },
   methods:{
@@ -55,9 +41,14 @@ export default {
       })
       .then(function (response) {
         if( response.data && response.data.success) {
-          //getFriends(_this)
-          _this.getData()
-          //_this.$router.push({ name: 'message'});
+          _this.$store.state.ws = new WebSocket(config.wsUrl+'?a='+_this.username) //注册WebSockets
+
+          getFriends(_this,_this.username).then(function(res){
+            _this.$store.state.username = _this.username
+            _this.$store.state.userFriends = res
+          })
+
+          _this.$router.push({ name: 'message'});
         } else {
           alert(response.data.msg)
         }
@@ -68,7 +59,6 @@ export default {
     }
   },
   created () {
-
   }
 }
 </script>

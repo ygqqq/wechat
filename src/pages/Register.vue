@@ -30,6 +30,7 @@
 <script>
 import axios from "axios"
 import config from "../../config/local.config"
+import { getFriends } from '../content/script/getFriends'
 export default {
   data(){
       return{
@@ -38,39 +39,7 @@ export default {
           passwordConfirm: '',
           nickname: '',
           sex: '0',
-          rec_user: '',
-          getData: () => {
-            const _this = this
-            axios.get('/api/user/friends/'+ this.username, {})
-            .then(function (response) {
-            if (response.data.success) {
-                if (response.data.msg !== 'null') {
-                let friendsArr = JSON.parse(response.data.msg)
-                var userMessage = {
-                    username: friendsArr[0].Friends[0],
-                    friends: []
-                }
-                for (var i = 0; i < friendsArr.length; i++) {
-                    let friends = {
-                    UserName: friendsArr[i].UserName,
-                    NickName: friendsArr[i].NickName,
-                    Id: friendsArr[i].Id_,
-                    Status: friendsArr[i].Status,
-                    CreateAt: friendsArr[i].CreateAt,
-                    }
-                    userMessage.friends.push(friends)
-                }
-                //保存到vuex
-                _this.$store.state.userMessage = userMessage
-                }
-            } else {
-                console.log('false')
-            }
-            })
-            .catch(function (error) {
-            alert(error);
-            })
-        }
+          rec_user: ''
       }
   },
   methods:{
@@ -85,8 +54,14 @@ export default {
             .then(function (response) {
                 let res = response.data;
                 if(res.success){
-                  _this.getData()
-                  _this.$router.push({ name: 'message'});
+                    _this.$store.state.ws = new WebSocket(config.wsUrl+'?a='+_this.username) //注册WebSockets
+
+                    getFriends(_this,_this.username).then(function(res){
+                        _this.$store.state.username = _this.username
+                        _this.$store.state.userFriends = res
+                    })
+
+                    _this.$router.push({ name: 'message'});
                 }
             })
             .catch(function (error) {

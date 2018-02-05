@@ -48,18 +48,32 @@ export default {
   },
   created () {
     this.getCookie()
+
     let path = this.$route.path
     let _this = this
-     
+    
     if (this.username) {
       if ( path!== '/login' && path!== '/register') {
         if (!this.$store.state.ws) {
           this.$store.state.ws = new WebSocket(config.wsUrl+'?a='+this.username) //注册WebSockets
+
+          //ws.onopen = function () {
+          getFriends(_this,_this.username).then(function(res){
+            //_this.$store.state.username = _this.username
+            _this.$store.state.ygq ='yyyyyyyyyyy'
+            _this.$store.state.userFriends = res
+          })
+          //}
         }
       }
     } else{
       this.$router.push({ name: 'login'});
     }
+
+    // this.$router.beforeEach((to, from, next) => {
+    //   console.log(to,from,next)
+    //   // ...
+    // })
   }
 }
 </script>

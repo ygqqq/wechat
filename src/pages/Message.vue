@@ -1,25 +1,24 @@
 <template>
     <div>
       <topHeader :headerTitle="headerTitle"></topHeader>
-      <div class="message-box">
-        <ul v-if="myFriends.length > 0">
-          <router-link tag="li" v-for="item in myFriends" :key="item.Id" :to="'/chat/'+item.NickName" >
-            <p class="user-img">
-              <i>{{getName(item.NickName)}}</i>
-            </p>
-            <p class="user-mess">
-              <span>{{item.NickName}}</span>
-              <i>你的最新一条消息</i>
-            </p>
-            <em class="friend-state" :class="{ 'on' : item.Status? true : false}"></em>
-            <!-- <span>昵称：{{item.NickName}}</span>
-            <span>登陆名：{{item.UserName}}</span> -->
-          </router-link>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-        </ul>
-        <div v-if="myFriends.length <= 0">
-          好友列表为空，可点击右上角添加好友
+        <div class="message-box">
+          <ul v-if="userFriends.length > 0">
+            <router-link tag="li" v-for="item in userFriends" :key="item.Id" :to="'/chat/'+item.NickName" >
+              <p class="user-img">
+                <i>{{getName(item.NickName)}}</i>
+              </p>
+              <p class="user-mess">
+                <span>{{item.NickName}}</span>
+                <i>你的最新一条消息</i>
+              </p>
+              <em class="friend-state" :class="{ 'on' : item.Status? true : false}"></em>
+            </router-link>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+          </ul>
+          <div v-if="userFriends.length <= 0">
+            好友列表为空，可点击右上角添加好友
+          </div> 
         </div>
-      </div>
+
     </div>
   </template>
   
@@ -31,7 +30,7 @@
   import { Header } from 'mint-ui'
   import { MessageBox } from 'mint-ui'
   import { getFriends } from '../content/script/getFriends'
-  import { mapState,mapMutations,mapActions } from "vuex"
+  import { mapState,mapGetters,mapMutations,mapActions } from "vuex"
 
   const ErrorMsg = 0  //错误消息
   const OnlineRemind	= 1	//上线提醒
@@ -47,71 +46,63 @@
     data () {
       return {
         nowTitle: '消息',  
-        headerTitle: this.$store.state.username
+        headerTitle: this.username
       }
     },
     components: {topHeader},
     computed:{
-      ...mapState({
-        username: 'username',
-        myFriends: 'userMessage'
-      }),
+      ...mapState([
+        'username','ygq','userFriends'
+      ]),
       title(){
-        return this.getCookie()
+        return this.$store.state.userFriends
       }
     }, 
+    watch:{
+      userFriends: function (val){
+        this.$store.state.userFriends = val
+        console.log(this.$store.state.userFriends)
+      }
+    },
     methods: {
-      ...mapMutations([
-        'getCookie', 
-      ]),
       getName (userName) {
         return userName.substr(userName.length-1,1)
       }
     },
-    created () {
-      this.getCookie()
-
-      let ws = this.$store.state.ws
-      let _this = this
-      
-      let storeUserMessage = this.$store.state.userMessage
-      if (!storeUserMessage) {
-        getFriends(_this,_this.username).then(function(res){
-          storeUserMessage = res
-        })
-      }
-      ws.addEventListener('message', function(e) {  //监听WebSocket
-        var msg = JSON.parse(e.data);
-        console.log(msg)
-        switch(msg.messagetype){
-          case ErrorMsg:     
-            MessageBox('', msg.message)
-            break
-          case AddFriendReq:     
-            _this.$store.commit('agreeFriend', msg.src)
-            break
-          case NormalMsg:   
-            MessageBox('', msg.message)
-            if (msg.message === '添加成功') {
-              getFriends(_this,_this.username).then(function(res){
-                storeUserMessage = res
-              })
-            }
-            break
-          case OnlineRemind:
-          case OfflineRemind:
-            _this.$store.commit('setState', msg)
-          case NormalMsg:
-            _this.$store.commit('reception', msg)
-        }
-      })
-
-      // ws.onopen = function () {
-      //   getFriends(this,_this.username).then(function(res){
-      //     _this.myFriends = res
-      //     _this.$store.state.userMessage = res
+    mounted () {
+      // let storeUserMessage = this.$store.state.userMessage
+      // if (!storeUserMessage) {
+      //   getFriends(_this,_this.username).then(function(res){
+      //     storeUserMessage = res
       //   })
       // }
+      
+
+          // ws.addEventListener('message', function(e) {  //监听WebSocket
+          //   var msg = JSON.parse(e.data);
+          //   console.log(msg)
+          //   switch(msg.messagetype){
+          //     case ErrorMsg:     
+          //       MessageBox('', msg.message)
+          //       break
+          //     case AddFriendReq:     
+          //       _this.$store.commit('agreeFriend', msg.src)
+          //       break
+          //     case NormalMsg:   
+          //       MessageBox('', msg.message)
+          //       if (msg.message === '添加成功') {
+          //         getFriends(_this,_this.username).then(function(res){
+          //           storeUserMessage = res
+          //         })
+          //       }
+          //       break
+          //     case OnlineRemind:
+          //     case OfflineRemind:
+          //       _this.$store.commit('setState', msg)
+          //     case NormalMsg:
+          //       _this.$store.commit('reception', msg)
+          //   }
+          // })
     }
   }
   </script>
