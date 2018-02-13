@@ -1,6 +1,6 @@
 <template>
     <div>
-      <topHeader :headerTitle="headerTitle"></topHeader>
+      <topHeader :headerTitle="username"></topHeader>
         <div class="message-box">
           <ul v-if="userFriends.length > 0">
             <router-link tag="li" v-for="item in userFriends" :key="item.Id" :to="'/chat/'+item.NickName" >
@@ -52,7 +52,7 @@
     components: {topHeader},
     computed:{
       ...mapState([
-        'username','ygq','userFriends'
+        'username','userFriends'
       ]),
       title(){
         return this.$store.state.userFriends
@@ -61,7 +61,6 @@
     watch:{
       userFriends: function (val){
         this.$store.state.userFriends = val
-        console.log(this.$store.state.userFriends)
       }
     },
     methods: {

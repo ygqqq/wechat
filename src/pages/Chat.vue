@@ -2,20 +2,21 @@
   <div>
     <topHeader :headerTitle="headerTitle"></topHeader>
     <div class="message-container">
-        <div class="message-box others">
+        <div v-for="item in nowMessageShow" class="message-box" :key="item.src" :class="{ 'own': username===item.src , 'others' : username!==item.src}">
             <span>42分钟前</span>
             <div>
-                <i>ni</i>
-                <p>ssssss</p>
+                <i v-if="username===item.src">wo</i>
+                <i v-else>{{getName(headerTitle)}}</i>
+                <p>{{item.message}}</p>
             </div>
         </div>
-        <div class="message-box own">
+        <!-- <div class="message-box own others">
             <span>52分钟前</span>
             <div>
                 <i>wo</i>
                 <p>ssssss</p>
             </div>
-        </div>
+        </div> -->
     </div>
     <div class="write-container">
         <input type="text" v-model="writeMessage">
@@ -45,7 +46,8 @@ export default {
         return {
             headerTitle: this.$route.params.username,
             writeMessage: '',
-            receive: this.$store.state.userMessage.find( item => item.NickName === this.$route.params.username).UserName
+            nowMessageShow:[],
+            receive: this.$store.state.userFriends.find( item => item.NickName === this.$route.params.username).UserName
         }
     }, 
     methods:{
@@ -53,23 +55,30 @@ export default {
             'getCookie', // 将 `this.increment()` 映射为 `this.$store.commit('increment')`
         ]),
         sendMessage () {
-            this.$store.state.ws.send(
-                JSON.stringify({
-                    src: this.username,
-                    dst: this.receive,
-                    message: this.writeMessage,
-                    messagetype: ChatMsg
-                }
-            ))
+            var req = {
+                src: this.username,
+                dst: this.receive,
+                message: this.writeMessage,
+                messagetype: ChatMsg
+            }
+            this.$store.state.ws.send(JSON.stringify(req))
+            this.nowMessage.unshift(req)
+        },
+        getName (userName) {
+            return userName.substr(userName.length-1,1)
         }
     },
     computed: {
-      ...mapState({
-        username: 'username',
-      })
+      ...mapState([
+        'username','userFriends','nowMessage'
+      ])
+    },
+    watch: {
+        nowMessage: function (val){
+            this.nowMessageShow = val
+        }
     },
     created () {
-        console.log('chat')
     }
 }
 </script>
